@@ -4,8 +4,8 @@
 
 ```
 Run actions/configure-pages@v4
-Error: Get Pages site failed. Please verify that the repository has Pages enabled 
-and configured to build using GitHub Actions, or consider exploring the 
+Error: Get Pages site failed. Please verify that the repository has Pages enabled
+and configured to build using GitHub Actions, or consider exploring the
 `enablement` parameter for this action.
 Error: HttpError: Not Found
 ```
@@ -40,6 +40,7 @@ git push -u origin main
 ```
 
 **Exemple avec un vrai username :**
+
 ```bash
 git remote add origin https://github.com/johndoe/tp2devops.git
 git push -u origin main
@@ -57,6 +58,7 @@ git push -u origin main
 5. C'est tout ! Pas besoin de sauvegarder
 
 **Capture d'écran de référence :**
+
 ```
 Settings → Pages → Source: [GitHub Actions ▼]
 ```
@@ -105,11 +107,11 @@ Votre application Todo List est maintenant en ligne !
 
 ### URLs Importantes
 
-| Type | URL |
-|------|-----|
-| **Repository** | `https://github.com/YOUR-USERNAME/tp2devops` |
-| **Actions** | `https://github.com/YOUR-USERNAME/tp2devops/actions` |
-| **Site Web** | `https://YOUR-USERNAME.github.io/tp2devops/` |
+| Type           | URL                                                  |
+| -------------- | ---------------------------------------------------- |
+| **Repository** | `https://github.com/YOUR-USERNAME/tp2devops`         |
+| **Actions**    | `https://github.com/YOUR-USERNAME/tp2devops/actions` |
+| **Site Web**   | `https://YOUR-USERNAME.github.io/tp2devops/`         |
 
 ---
 
@@ -128,6 +130,7 @@ Votre application Todo List est maintenant en ligne !
 Ouvrez : `https://YOUR-USERNAME.github.io/tp2devops/`
 
 Vous devriez voir :
+
 - 📝 Titre "Liste de Tâches"
 - Champ de saisie
 - Bouton "Ajouter"
@@ -136,6 +139,7 @@ Vous devriez voir :
 ### L'Observabilité Fonctionne ?
 
 Ouvrez la console du navigateur (F12) et vous verrez :
+
 - Logs JSON structurés
 - Métriques [METRIC]
 - Web Vitals [WEB VITAL]
@@ -167,22 +171,26 @@ git remote set-url origin git@github.com:YOUR-USERNAME/tp2devops.git
 ### Le Job Deploy est Grisé (Skipped)
 
 **Normal si :**
+
 - Vous n'êtes pas sur la branche `main`
 - C'est une Pull Request
 - Pages n'est pas encore activé
 
 **Solution :**
+
 - Vérifiez que vous êtes sur `main` : `git branch`
 - Activez GitHub Pages (Étape 2 ci-dessus)
 
 ### Page 404 sur le Site
 
 **Causes possibles :**
+
 1. Le déploiement n'est pas terminé (attendez 2-3 min)
 2. Dans `vite.config.js`, vérifiez `base: '/tp2devops/'`
 3. Le workflow de déploiement a échoué (vérifiez Actions)
 
 **Solution :**
+
 ```bash
 # Vérifier vite.config.js
 cat vite.config.js | grep base
@@ -215,4 +223,3 @@ Pour plus de détails, consultez :
 ---
 
 **Une fois ces 3 étapes complétées, l'erreur sera résolue et votre site sera en ligne ! 🚀**
-

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tp2devops
+  labels:
+    name: tp2devops
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    name: observability
+

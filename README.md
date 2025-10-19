@@ -15,22 +15,26 @@ Application de liste de tâches (Todo List) développée avec React.js, intégra
 ## 🛠️ Technologies Utilisées
 
 ### Frontend
+
 - **React.js 19** - Framework UI
 - **Vite** - Build tool et dev server
 - **CSS3** - Styling
 
 ### Testing
+
 - **Vitest** - Test runner
 - **Testing Library** - Test utilities
 - **Happy-DOM** - DOM environment
 
 ### Observabilité
+
 - **OpenTelemetry** - Distributed tracing
 - **Web Vitals** - Performance metrics
 - **Custom Logger** - Structured logging
 - **Custom Metrics** - Business metrics
 
 ### CI/CD
+
 - **GitHub Actions** - Automation pipeline
 - **GitHub Pages** - Deployment
 
@@ -65,27 +69,35 @@ npm run build
 ## 📊 Observabilité
 
 ### Logs Structurés
+
 L'application utilise un logger personnalisé qui génère des logs en format JSON avec:
+
 - Timestamp
 - Niveau de log (DEBUG, INFO, WARN, ERROR)
 - Contexte
 - Métadonnées
 
 ### Métriques
+
 Collecte automatique de métriques:
+
 - Nombre total de todos
 - Todos complétées
 - Todos en cours
 - Actions utilisateur (ajout, suppression, complétion)
 
 ### Tracing
+
 Implémentation d'OpenTelemetry pour le tracing distribué:
+
 - Traces pour chaque action utilisateur
 - Spans avec attributs contextuels
 - Export vers console (configurable pour OTLP)
 
 ### Performance Monitoring
+
 Monitoring des Web Vitals:
+
 - CLS (Cumulative Layout Shift)
 - INP (Interaction to Next Paint)
 - LCP (Largest Contentful Paint)
@@ -97,16 +109,19 @@ Monitoring des Web Vitals:
 Le pipeline GitHub Actions comprend:
 
 ### 1. Tests
+
 - Installation des dépendances
 - Linting du code
 - Exécution des tests unitaires
 - Génération de coverage
 
 ### 2. Build
+
 - Build de l'application
 - Upload des artifacts
 
 ### 3. Déploiement
+
 - Déploiement automatique sur GitHub Pages (branche main uniquement)
 
 ### ⚠️ Important : Configuration GitHub Pages
@@ -151,6 +166,7 @@ tp2devops/
 ## 🎯 Objectifs Pédagogiques
 
 Ce projet démontre:
+
 - ✅ Intégration d'un pipeline CI/CD complet
 - ✅ Mise en place d'une solution d'observabilité
 - ✅ Tests automatisés et couverture de code

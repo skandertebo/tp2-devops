@@ -3,6 +3,7 @@
 ## ⚠️ Problème Courant : GitHub Pages Non Configuré
 
 Si vous rencontrez cette erreur dans GitHub Actions :
+
 ```
 Error: Get Pages site failed. Please verify that the repository has Pages enabled
 ```
@@ -18,7 +19,7 @@ C'est normal ! Suivez ces étapes pour résoudre le problème.
 1. Allez sur [github.com](https://github.com)
 2. Cliquez sur le bouton **"+"** → **"New repository"**
 3. Nom du repository : **`tp2devops`**
-4. Description : *"Application Todo avec CI/CD et Observabilité"*
+4. Description : _"Application Todo avec CI/CD et Observabilité"_
 5. Visibilité : **Public** (requis pour GitHub Pages gratuit)
 6. **NE PAS** initialiser avec README, .gitignore ou license
 7. Cliquez sur **"Create repository"**
@@ -90,8 +91,9 @@ deploy:
   runs-on: ubuntu-latest
   needs: build
   # Désactiver temporairement en changeant la condition
-  if: false  # Changé de: github.ref == 'refs/heads/main' && github.event_name == 'push'
-  
+  if: false # Changé de: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+
   # ... reste du job
 ```
 
@@ -121,6 +123,7 @@ Le pipeline devrait afficher :
 ### Logs à Vérifier
 
 **Job Test :**
+
 ```
 ✓ src/observability/logger.test.js (6 tests) 3ms
 ✓ src/components/TodoList.test.jsx (9 tests) 269ms
@@ -130,6 +133,7 @@ Test Files  2 passed (2)
 ```
 
 **Job Build :**
+
 ```
 dist/index.html                   0.49 kB │ gzip:  0.30 kB
 dist/assets/index-*.css           2.24 kB │ gzip:  0.94 kB
@@ -138,6 +142,7 @@ dist/assets/index-*.js          284.11 kB │ gzip: 90.23 kB
 ```
 
 **Job Deploy :**
+
 ```
 ✓ Setup Pages
 ✓ Upload artifact
@@ -184,6 +189,7 @@ git remote set-url origin git@github.com:YOUR-USERNAME/tp2devops.git
 ### Le Site Affiche une Page 404
 
 Vérifiez que :
+
 1. Le workflow de déploiement s'est terminé avec succès
 2. Dans `vite.config.js`, `base` correspond au nom de votre repository
 3. Attendez 2-3 minutes après le déploiement
@@ -191,6 +197,7 @@ Vérifiez que :
 ### Le Job Deploy est Grisé (Skipped)
 
 Normal si :
+
 - Vous n'êtes pas sur la branche `main`
 - C'est une Pull Request
 - La condition `if` du job n'est pas satisfaite
@@ -216,4 +223,3 @@ Remplacez `YOUR-USERNAME` par votre nom d'utilisateur GitHub.
 - Les mises à jour sont automatiques à chaque push sur `main`
 - Le site est servi via HTTPS (sécurisé)
 - Le CDN de GitHub assure une bonne performance mondiale
-

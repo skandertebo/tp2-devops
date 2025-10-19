@@ -1,0 +1,133 @@
+# This file shows how to configure Prometheus Operator
+# Install it first with: kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/bundle.yaml
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: observability
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources:
+      - configmaps
+    verbs: ["get"]
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: observability
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+  namespace: observability
+spec:
+  serviceAccountName: prometheus
+  serviceMonitorSelector:
+    matchLabels:
+      team: tp2devops
+  podMonitorSelector:
+    matchLabels:
+      team: tp2devops
+  resources:
+    requests:
+      memory: 400Mi
+      cpu: 200m
+    limits:
+      memory: 800Mi
+      cpu: 500m
+  retention: 7d
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+  enableRemoteWriteReceiver: true
+  enableAdminAPI: true
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: observability
+spec:
+  type: ClusterIP
+  ports:
+    - name: web
+      port: 9090
+      targetPort: web
+  selector:
+    prometheus: prometheus
+
+---
+# ServiceMonitor for the backend application
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend-metrics
+  namespace: tp2devops
+  labels:
+    team: tp2devops
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+
+---
+# ServiceMonitor for OpenTelemetry Collector
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: otel-collector-metrics
+  namespace: observability
+  labels:
+    team: tp2devops
+spec:
+  selector:
+    matchLabels:
+      app: otel-collector
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+

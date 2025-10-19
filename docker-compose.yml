@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./k8s/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Prometheus metrics
+    networks:
+      - observability
+
+  # Tempo - Distributed tracing
+  tempo:
+    image: grafana/tempo:2.3.1
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo.yaml
+      - tempo-data:/tmp/tempo
+    ports:
+      - "3200:3200"   # Tempo HTTP
+      - "4317"        # OTLP gRPC receiver
+    networks:
+      - observability
+
+  # Loki - Log aggregation
+  loki:
+    image: grafana/loki:2.9.4
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - observability
+    volumes:
+      - loki-data:/loki
+
+  # Prometheus - Metrics
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-remote-write-receiver'
+      - '--enable-feature=exemplar-storage'
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - observability
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10.2.3
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor tracesEmbeddedFlameGraph
+    volumes:
+      - ./config/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - OTEL_COLLECTOR_URL=http://otel-collector:4318
+      - LOG_LEVEL=info
+    ports:
+      - "3001:3001"
+    networks:
+      - observability
+    depends_on:
+      - otel-collector
+
+  # Frontend (development mode)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+    networks:
+      - observability
+    depends_on:
+      - backend
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  tempo-data:
+  loki-data:
+  prometheus-data:
+  grafana-data:
+
