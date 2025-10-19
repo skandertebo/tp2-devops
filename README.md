@@ -109,6 +109,14 @@ Le pipeline GitHub Actions comprend:
 ### 3. Déploiement
 - Déploiement automatique sur GitHub Pages (branche main uniquement)
 
+### ⚠️ Important : Configuration GitHub Pages
+
+Pour que le déploiement fonctionne, vous devez :
+
+1. Pousser le code sur GitHub
+2. Activer GitHub Pages : **Settings → Pages → Source: GitHub Actions**
+3. Voir le guide complet : [docs/DEPLOIEMENT_GITHUB.md](./docs/DEPLOIEMENT_GITHUB.md)
+
 ## 📝 Structure du Projet
 
 ```

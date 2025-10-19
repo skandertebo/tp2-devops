@@ -19,6 +19,7 @@
 ### Objectif du Projet
 
 Ce projet a pour but de démontrer l'intégration complète d'un pipeline CI/CD dans une application web moderne, ainsi que la mise en place d'une solution d'observabilité complète incluant :
+
 - **Logs structurés** : Pour tracer les événements de l'application
 - **Métriques** : Pour mesurer les performances et l'usage
 - **Traces distribuées** : Pour suivre le parcours des requêtes
@@ -28,7 +29,7 @@ Ce projet a pour but de démontrer l'intégration complète d'un pipeline CI/CD 
 - **Frontend** : React.js 19 avec Vite
 - **Testing** : Vitest + React Testing Library
 - **CI/CD** : GitHub Actions
-- **Observabilité** : 
+- **Observabilité** :
   - OpenTelemetry (tracing)
   - Web Vitals (métriques de performance)
   - Logger personnalisé (logs structurés)
@@ -65,9 +66,11 @@ tp2devops/
 ### Choix Techniques
 
 #### 1. Vite vs Create React App
+
 **Choix** : Vite
 
 **Raisons** :
+
 - Build beaucoup plus rapide (utilise esbuild)
 - Hot Module Replacement (HMR) instantané
 - Configuration simplifiée
@@ -75,9 +78,11 @@ tp2devops/
 - Optimisation automatique pour la production
 
 #### 2. Vitest vs Jest
+
 **Choix** : Vitest
 
 **Raisons** :
+
 - Intégration native avec Vite
 - API compatible avec Jest
 - Exécution ultra-rapide
@@ -85,9 +90,11 @@ tp2devops/
 - Watch mode intelligent
 
 #### 3. Happy-DOM vs JSDOM
+
 **Choix** : Happy-DOM
 
 **Raisons** :
+
 - Plus léger et plus rapide
 - Meilleure compatibilité avec les modules ESM
 - Moins de dépendances
@@ -102,16 +109,19 @@ tp2devops/
 L'application Todo List est volontairement simple mais fonctionnelle :
 
 1. **Ajouter une tâche**
+
    - Saisie de texte
    - Validation (pas de tâche vide)
    - Ajout par clic ou touche Entrée
 
 2. **Marquer comme complétée**
+
    - Checkbox interactive
    - Effet visuel (texte barré, opacité)
    - État persistant dans le composant
 
 3. **Supprimer une tâche**
+
    - Bouton de suppression avec icône
    - Suppression immédiate
 
@@ -123,34 +133,37 @@ L'application Todo List est volontairement simple mais fonctionnelle :
 ### Code Principal (TodoList.jsx)
 
 ```javascript
-import { useState, useEffect } from 'react';
-import Logger from '../observability/logger';
-import { metrics } from '../observability/metrics';
-import { createSpan } from '../observability/tracing';
+import { useState, useEffect } from "react";
+import Logger from "../observability/logger";
+import { metrics } from "../observability/metrics";
+import { createSpan } from "../observability/tracing";
 
-const logger = new Logger('TodoList');
+const logger = new Logger("TodoList");
 
 function TodoList() {
   const [todos, setTodos] = useState([]);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
 
   // Initialisation de l'observabilité
   useEffect(() => {
-    logger.info('TodoList component mounted');
-    metrics.setGauge('todos_total', todos.length);
+    logger.info("TodoList component mounted");
+    metrics.setGauge("todos_total", todos.length);
   }, []);
 
   // Mise à jour des métriques
   useEffect(() => {
-    metrics.setGauge('todos_total', todos.length);
-    metrics.setGauge('todos_completed', todos.filter(t => t.completed).length);
-    metrics.setGauge('todos_pending', todos.filter(t => !t.completed).length);
+    metrics.setGauge("todos_total", todos.length);
+    metrics.setGauge(
+      "todos_completed",
+      todos.filter((t) => t.completed).length
+    );
+    metrics.setGauge("todos_pending", todos.filter((t) => !t.completed).length);
   }, [todos]);
 
   const addTodo = () => {
-    createSpan('add_todo', { todoText: inputValue }, () => {
-      if (inputValue.trim() === '') {
-        logger.warn('Attempted to add empty todo');
+    createSpan("add_todo", { todoText: inputValue }, () => {
+      if (inputValue.trim() === "") {
+        logger.warn("Attempted to add empty todo");
         return;
       }
 
@@ -158,14 +171,14 @@ function TodoList() {
         id: Date.now(),
         text: inputValue,
         completed: false,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
 
       setTodos([...todos, newTodo]);
-      setInputValue('');
-      
-      logger.info('Todo added', { todoId: newTodo.id });
-      metrics.incrementCounter('todos_added');
+      setInputValue("");
+
+      logger.info("Todo added", { todoId: newTodo.id });
+      metrics.incrementCounter("todos_added");
     });
   };
 
@@ -176,6 +189,7 @@ function TodoList() {
 ### Interface Utilisateur
 
 L'interface utilise un design moderne avec :
+
 - **Dégradé de fond** violet/bleu pour l'esthétique
 - **Carte blanche centrée** pour le contenu
 - **Animations au survol** pour la réactivité
@@ -189,6 +203,7 @@ L'interface utilise un design moderne avec :
 ### Stratégie de Test
 
 Nous avons implémenté **15 tests unitaires** couvrant :
+
 - Le rendu des composants
 - Les interactions utilisateur
 - La logique métier
@@ -197,34 +212,34 @@ Nous avons implémenté **15 tests unitaires** couvrant :
 ### Tests du Composant TodoList
 
 ```javascript
-describe('TodoList', () => {
-  it('should render the todo list component', () => {
+describe("TodoList", () => {
+  it("should render the todo list component", () => {
     render(<TodoList />);
-    expect(screen.getByText('📝 Liste de Tâches')).toBeInTheDocument();
+    expect(screen.getByText("📝 Liste de Tâches")).toBeInTheDocument();
   });
 
-  it('should add a new todo when clicking add button', async () => {
+  it("should add a new todo when clicking add button", async () => {
     const user = userEvent.setup();
     render(<TodoList />);
-    
-    const input = screen.getByTestId('todo-input');
-    const addButton = screen.getByTestId('add-button');
 
-    await user.type(input, 'Test Todo');
+    const input = screen.getByTestId("todo-input");
+    const addButton = screen.getByTestId("add-button");
+
+    await user.type(input, "Test Todo");
     await user.click(addButton);
 
-    expect(screen.getByText('Test Todo')).toBeInTheDocument();
+    expect(screen.getByText("Test Todo")).toBeInTheDocument();
   });
 
-  it('should toggle todo completion status', async () => {
+  it("should toggle todo completion status", async () => {
     // Test de la complétion des tâches
   });
 
-  it('should delete a todo', async () => {
+  it("should delete a todo", async () => {
     // Test de la suppression
   });
 
-  it('should display correct statistics', async () => {
+  it("should display correct statistics", async () => {
     // Test des statistiques
   });
 });
@@ -233,16 +248,16 @@ describe('TodoList', () => {
 ### Tests du Logger
 
 ```javascript
-describe('Logger', () => {
-  it('should log info messages', () => {
-    logger.info('Info message');
+describe("Logger", () => {
+  it("should log info messages", () => {
+    logger.info("Info message");
     const loggedMessage = JSON.parse(consoleSpies.info.mock.calls[0][0]);
-    expect(loggedMessage.level).toBe('INFO');
-    expect(loggedMessage.message).toBe('Info message');
+    expect(loggedMessage.level).toBe("INFO");
+    expect(loggedMessage.message).toBe("Info message");
   });
 
-  it('should include timestamp in logs', () => {
-    logger.info('Test message');
+  it("should include timestamp in logs", () => {
+    logger.info("Test message");
     const loggedMessage = JSON.parse(consoleSpies.info.mock.calls[0][0]);
     expect(loggedMessage.timestamp).toBeDefined();
   });
@@ -293,58 +308,58 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Run linter
-      run: npm run lint
-      continue-on-error: true
-      
-    - name: Run tests
-      run: npm test -- --run
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test -- --run
 
   build:
     name: Build
     runs-on: ubuntu-latest
     needs: test
-    
+
     steps:
-    - name: Build application
-      run: npm run build
-      
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist
-        path: dist/
+      - name: Build application
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
   deploy:
     name: Deploy to GitHub Pages
     needs: build
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
-    - name: Deploy to GitHub Pages
-      uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
 ```
 
 ### Étapes Détaillées
@@ -354,6 +369,7 @@ jobs:
 **Objectif** : Valider la qualité du code
 
 **Étapes** :
+
 1. **Checkout** : Récupération du code source
 2. **Setup Node.js** : Installation de Node.js 20 avec cache npm
 3. **Install dependencies** : `npm ci` (installation clean et déterministe)
@@ -367,6 +383,7 @@ jobs:
 **Objectif** : Compiler l'application pour la production
 
 **Étapes** :
+
 1. Checkout du code
 2. Installation des dépendances
 3. **Build** : Compilation avec Vite (`npm run build`)
@@ -379,6 +396,7 @@ jobs:
 **Durée moyenne** : ~1 minute
 
 **Résultat du build** :
+
 ```
 dist/index.html                   0.49 kB │ gzip:  0.30 kB
 dist/assets/index-*.css           2.24 kB │ gzip:  0.94 kB
@@ -390,16 +408,19 @@ dist/assets/index-*.js          284.11 kB │ gzip: 90.23 kB
 **Objectif** : Déployer l'application sur GitHub Pages
 
 **Conditions** :
+
 - Exécution uniquement sur la branche `main`
 - Après succès des jobs TEST et BUILD
 - Type d'événement : `push` (pas sur PR)
 
 **Étapes** :
+
 1. Configuration de GitHub Pages
 2. Upload de l'artifact vers Pages
 3. Déploiement automatique
 
 **Permissions requises** :
+
 ```yaml
 permissions:
   contents: read
@@ -416,27 +437,27 @@ name: Observability Check
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   schedule:
-    - cron: '0 9 * * *'  # Tous les jours à 9h UTC
+    - cron: "0 9 * * *" # Tous les jours à 9h UTC
 
 jobs:
   observability:
     steps:
-    - name: Check for logging implementation
-      run: grep -r "logger\." src/
-      
-    - name: Check for metrics implementation
-      run: grep -r "metrics\." src/
-      
-    - name: Check for tracing implementation
-      run: grep -r "createSpan" src/
-      
-    - name: Run smoke test
-      run: |
-        npm run dev &
-        sleep 10
-        kill $!
+      - name: Check for logging implementation
+        run: grep -r "logger\." src/
+
+      - name: Check for metrics implementation
+        run: grep -r "metrics\." src/
+
+      - name: Check for tracing implementation
+        run: grep -r "createSpan" src/
+
+      - name: Run smoke test
+        run: |
+          npm run dev &
+          sleep 10
+          kill $!
 ```
 
 **Objectif** : S'assurer que les outils d'observabilité sont bien utilisés dans le code.
@@ -453,7 +474,7 @@ L'observabilité repose sur **trois piliers** : Logs, Métriques et Traces.
 
 ```javascript
 class Logger {
-  constructor(context = 'App') {
+  constructor(context = "App") {
     this.context = context;
   }
 
@@ -463,12 +484,12 @@ class Logger {
       level,
       context: this.context,
       message,
-      ...metadata
+      ...metadata,
     };
   }
 
   info(message, metadata) {
-    const log = this.formatMessage('INFO', message, metadata);
+    const log = this.formatMessage("INFO", message, metadata);
     console.info(JSON.stringify(log));
   }
 
@@ -500,16 +521,16 @@ class Logger {
 #### Utilisation dans l'Application
 
 ```javascript
-const logger = new Logger('TodoList');
+const logger = new Logger("TodoList");
 
 // Log d'information
-logger.info('TodoList component mounted');
+logger.info("TodoList component mounted");
 
 // Log d'avertissement avec métadonnées
-logger.warn('Attempted to add empty todo');
+logger.warn("Attempted to add empty todo");
 
 // Log d'erreur avec contexte
-logger.error('Failed to save todo', { error: error.message });
+logger.error("Failed to save todo", { error: error.message });
 ```
 
 ### 2. Métriques
@@ -519,8 +540,8 @@ logger.error('Failed to save todo', { error: error.message });
 ```javascript
 class MetricsCollector {
   constructor() {
-    this.counters = {};   // Valeurs qui augmentent
-    this.gauges = {};     // Valeurs qui changent
+    this.counters = {}; // Valeurs qui augmentent
+    this.gauges = {}; // Valeurs qui changent
     this.histograms = {}; // Distributions
   }
 
@@ -546,11 +567,13 @@ export const metrics = new MetricsCollector();
 #### Types de Métriques Collectées
 
 **Gauges (valeurs instantanées)** :
+
 - `todos_total` : Nombre total de tâches
 - `todos_completed` : Nombre de tâches complétées
 - `todos_pending` : Nombre de tâches en cours
 
 **Counters (incrémentation)** :
+
 - `todos_added` : Nombre de tâches ajoutées (depuis le début)
 - `todos_deleted` : Nombre de tâches supprimées
 - `todos_completed_action` : Nombre de complétions
@@ -561,15 +584,15 @@ export const metrics = new MetricsCollector();
 ```javascript
 // Mise à jour automatique des gauges
 useEffect(() => {
-  metrics.setGauge('todos_total', todos.length);
-  metrics.setGauge('todos_completed', todos.filter(t => t.completed).length);
-  metrics.setGauge('todos_pending', todos.filter(t => !t.completed).length);
+  metrics.setGauge("todos_total", todos.length);
+  metrics.setGauge("todos_completed", todos.filter((t) => t.completed).length);
+  metrics.setGauge("todos_pending", todos.filter((t) => !t.completed).length);
 }, [todos]);
 
 // Incrémentation d'un compteur
 const addTodo = () => {
   // ... logique d'ajout
-  metrics.incrementCounter('todos_added');
+  metrics.incrementCounter("todos_added");
 };
 ```
 
@@ -587,29 +610,30 @@ const addTodo = () => {
 #### Implémentation (tracing.js)
 
 ```javascript
-import { trace } from '@opentelemetry/api';
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
-import { SimpleSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-web';
+import { trace } from "@opentelemetry/api";
+import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
+import {
+  SimpleSpanProcessor,
+  ConsoleSpanExporter,
+} from "@opentelemetry/sdk-trace-web";
 
 export function initializeTracing() {
   const provider = new WebTracerProvider();
-  
+
   // Configuration de l'exporteur (console pour dev, OTLP pour prod)
-  provider.addSpanProcessor(
-    new SimpleSpanProcessor(new ConsoleSpanExporter())
-  );
-  
+  provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
+
   provider.register({
     contextManager: new ZoneContextManager(),
   });
-  
-  return trace.getTracer('todo-app', '1.0.0');
+
+  return trace.getTracer("todo-app", "1.0.0");
 }
 
 export function createSpan(name, attributes = {}, fn) {
   const tracer = getTracer();
   const span = tracer.startSpan(name, { attributes });
-  
+
   try {
     const result = fn(span);
     span.end();
@@ -633,14 +657,14 @@ export function createSpan(name, attributes = {}, fn) {
 
 ```javascript
 const addTodo = () => {
-  createSpan('add_todo', { todoText: inputValue }, () => {
+  createSpan("add_todo", { todoText: inputValue }, () => {
     // Logique d'ajout de todo
     // Le span capture automatiquement le temps d'exécution
   });
 };
 
 const toggleTodo = (id) => {
-  createSpan('toggle_todo', { todoId: id }, () => {
+  createSpan("toggle_todo", { todoId: id }, () => {
     // Logique de basculement
   });
 };
@@ -668,45 +692,45 @@ const toggleTodo = (id) => {
 #### Implémentation (performance.js)
 
 ```javascript
-import { onCLS, onINP, onLCP, onFCP, onTTFB } from 'web-vitals';
+import { onCLS, onINP, onLCP, onFCP, onTTFB } from "web-vitals";
 
 export function initPerformanceMonitoring() {
   // Cumulative Layout Shift
   onCLS((metric) => {
-    console.info('[WEB VITAL] CLS:', metric);
+    console.info("[WEB VITAL] CLS:", metric);
   });
 
   // Interaction to Next Paint
   onINP((metric) => {
-    console.info('[WEB VITAL] INP:', metric);
+    console.info("[WEB VITAL] INP:", metric);
   });
 
   // Largest Contentful Paint
   onLCP((metric) => {
-    console.info('[WEB VITAL] LCP:', metric);
+    console.info("[WEB VITAL] LCP:", metric);
   });
 
   // First Contentful Paint
   onFCP((metric) => {
-    console.info('[WEB VITAL] FCP:', metric);
+    console.info("[WEB VITAL] FCP:", metric);
   });
 
   // Time to First Byte
   onTTFB((metric) => {
-    console.info('[WEB VITAL] TTFB:', metric);
+    console.info("[WEB VITAL] TTFB:", metric);
   });
 }
 ```
 
 #### Métriques Collectées
 
-| Métrique | Description | Seuil Bon |
-|----------|-------------|-----------|
-| **CLS** | Stabilité visuelle (décalages) | < 0.1 |
-| **INP** | Réactivité aux interactions | < 200ms |
-| **LCP** | Temps de chargement du plus grand élément | < 2.5s |
-| **FCP** | Temps du premier rendu | < 1.8s |
-| **TTFB** | Temps de réponse du serveur | < 0.8s |
+| Métrique | Description                               | Seuil Bon |
+| -------- | ----------------------------------------- | --------- |
+| **CLS**  | Stabilité visuelle (décalages)            | < 0.1     |
+| **INP**  | Réactivité aux interactions               | < 200ms   |
+| **LCP**  | Temps de chargement du plus grand élément | < 2.5s    |
+| **FCP**  | Temps du premier rendu                    | < 1.8s    |
+| **TTFB** | Temps de réponse du serveur               | < 0.8s    |
 
 #### Exemple de Sortie
 
@@ -733,15 +757,15 @@ export function initPerformanceMonitoring() {
 ```javascript
 // App.jsx
 useEffect(() => {
-  logger.info('Application starting...');
-  
+  logger.info("Application starting...");
+
   try {
     initializeTracing();
     initPerformanceMonitoring();
-    logger.info('Observability initialized successfully');
+    logger.info("Observability initialized successfully");
   } catch (error) {
-    logger.error('Failed to initialize observability', { 
-      error: error.message 
+    logger.error("Failed to initialize observability", {
+      error: error.message,
     });
   }
 }, []);
@@ -766,7 +790,7 @@ useEffect(() => {
 ```javascript
 // vite.config.js
 export default defineConfig({
-  base: '/tp2devops/',  // Nom du repository
+  base: "/tp2devops/", // Nom du repository
   // ...
 });
 ```
@@ -776,6 +800,7 @@ export default defineConfig({
 #### 2. Activation GitHub Pages
 
 Dans les paramètres du repository :
+
 1. Aller dans **Settings** → **Pages**
 2. Source : **GitHub Actions**
 3. Le déploiement se fait automatiquement via le workflow
@@ -908,12 +933,14 @@ dist/assets/index-*.js          284.11 kB │ gzip: 90.23 kB
 
 ✅ **Tests complets** : 15 tests unitaires couvrant les fonctionnalités principales
 
-✅ **Pipeline CI/CD** : 
+✅ **Pipeline CI/CD** :
+
 - Tests automatisés
 - Build optimisé
 - Déploiement continu sur GitHub Pages
 
 ✅ **Observabilité complète** :
+
 - **Logs structurés** : Format JSON avec contexte et métadonnées
 - **Métriques** : Gauges et counters pour suivre l'usage
 - **Traces** : OpenTelemetry pour le suivi distribué
@@ -940,17 +967,20 @@ dist/assets/index-*.js          284.11 kB │ gzip: 90.23 kB
 ### Apprentissages Clés
 
 **DevOps** :
+
 - Configuration de pipelines CI/CD
 - Automatisation des tests et déploiements
 - Gestion des artifacts et environnements
 
 **Observabilité** :
+
 - Importance des logs structurés
 - Métriques pour mesurer le succès
 - Tracing pour debugger les problèmes
 - Web Vitals pour l'expérience utilisateur
 
 **Qualité** :
+
 - Tests automatisés = confiance
 - Linting = code cohérent
 - Documentation = maintenabilité
@@ -960,21 +990,25 @@ dist/assets/index-*.js          284.11 kB │ gzip: 90.23 kB
 Pour une mise en production réelle, il faudrait :
 
 1. **Sécurité** :
+
    - HTTPS obligatoire
    - CSP headers
    - Scan de dépendances
 
 2. **Monitoring** :
+
    - Alertes sur les erreurs
    - Dashboards de métriques
    - Logs centralisés (ELK, Loki)
 
 3. **Performance** :
+
    - CDN pour les assets
    - Cache HTTP
    - Lazy loading
 
 4. **Observabilité** :
+
    - Export vers Prometheus
    - Traces vers Jaeger
    - Logs vers Elasticsearch
@@ -1022,4 +1056,3 @@ npm run lint             # Vérification du code
 ---
 
 **Fin du Rapport**
-

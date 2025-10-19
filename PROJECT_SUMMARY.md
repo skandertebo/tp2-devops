@@ -11,11 +11,13 @@ Tous les objectifs ont été atteints avec succès !
 ### 1. Application React.js ✓
 
 **Fichiers principaux :**
+
 - `src/App.jsx` - Composant racine avec initialisation de l'observabilité
 - `src/components/TodoList.jsx` - Composant principal de la liste de tâches
 - `src/components/TodoList.css` - Styles modernes et responsive
 
 **Fonctionnalités :**
+
 - ✅ Ajouter une tâche (bouton ou touche Entrée)
 - ✅ Marquer comme complétée (checkbox)
 - ✅ Supprimer une tâche (bouton supprimer)
@@ -25,11 +27,13 @@ Tous les objectifs ont été atteints avec succès !
 ### 2. Tests Unitaires ✓
 
 **Fichiers de test :**
+
 - `src/components/TodoList.test.jsx` - 9 tests du composant
 - `src/observability/logger.test.js` - 6 tests du logger
 - `src/test/setup.js` - Configuration Vitest
 
 **Résultats :**
+
 ```
 ✓ 15 tests passés (15/15)
 ✓ 2 fichiers de test
@@ -40,15 +44,18 @@ Tous les objectifs ont été atteints avec succès !
 ### 3. Pipeline CI/CD ✓
 
 **Workflows GitHub Actions :**
+
 - `.github/workflows/ci.yml` - Pipeline principal (test → build → deploy)
 - `.github/workflows/observability-check.yml` - Vérification observabilité
 
 **Jobs du pipeline :**
+
 1. **TEST** : Linting + Tests unitaires
 2. **BUILD** : Compilation Vite + Upload artifacts
 3. **DEPLOY** : Déploiement GitHub Pages (branche main uniquement)
 
 **Déclencheurs :**
+
 - Push sur `main` ou `develop`
 - Pull requests vers `main`
 - Cron quotidien pour observability check
@@ -56,15 +63,18 @@ Tous les objectifs ont été atteints avec succès !
 ### 4. Observabilité Complète ✓
 
 #### A. Logs Structurés
+
 **Fichier :** `src/observability/logger.js`
 
 **Caractéristiques :**
+
 - Format JSON
 - Timestamp ISO 8601
 - Niveaux : DEBUG, INFO, WARN, ERROR
 - Contexte et métadonnées
 
 **Exemple :**
+
 ```json
 {
   "timestamp": "2025-10-19T15:30:12.456Z",
@@ -76,33 +86,40 @@ Tous les objectifs ont été atteints avec succès !
 ```
 
 #### B. Métriques
+
 **Fichier :** `src/observability/metrics.js`
 
 **Types de métriques :**
+
 - **Gauges** : todos_total, todos_completed, todos_pending
 - **Counters** : todos_added, todos_deleted, todos_completed_action
 
 **Exemple :**
+
 ```
 [METRIC] Gauge todos_total = 3
 [METRIC] Counter todos_added incremented to 5
 ```
 
 #### C. Tracing Distribué
+
 **Fichier :** `src/observability/tracing.js`
 
 **Technologie :** OpenTelemetry Web SDK
 
 **Implémentation :**
+
 - WebTracerProvider configuré
 - ZoneContextManager pour le contexte
 - ConsoleSpanExporter (dev) - remplaçable par OTLP (prod)
 - Spans automatiques pour chaque action utilisateur
 
 #### D. Performance Monitoring
+
 **Fichier :** `src/observability/performance.js`
 
 **Métriques Web Vitals :**
+
 - CLS (Cumulative Layout Shift)
 - INP (Interaction to Next Paint)
 - LCP (Largest Contentful Paint)
@@ -113,23 +130,25 @@ Tous les objectifs ont été atteints avec succès !
 
 **Documents créés :**
 
-| Fichier | Description | Langue |
-|---------|-------------|--------|
-| `README.md` | Vue d'ensemble du projet | Français |
-| `RAPPORT.md` | **Rapport technique complet** | **Français** |
-| `docs/ARCHITECTURE.md` | Schémas d'architecture | Français |
-| `docs/GUIDE_UTILISATION.md` | Guide utilisateur/développeur | Français |
-| `docs/SCREENSHOTS_GUIDE.md` | Instructions pour captures d'écran | Français |
+| Fichier                     | Description                        | Langue       |
+| --------------------------- | ---------------------------------- | ------------ |
+| `README.md`                 | Vue d'ensemble du projet           | Français     |
+| `RAPPORT.md`                | **Rapport technique complet**      | **Français** |
+| `docs/ARCHITECTURE.md`      | Schémas d'architecture             | Français     |
+| `docs/GUIDE_UTILISATION.md` | Guide utilisateur/développeur      | Français     |
+| `docs/SCREENSHOTS_GUIDE.md` | Instructions pour captures d'écran | Français     |
 
 ### 6. Configuration du Projet ✓
 
 **Fichiers de configuration :**
+
 - `package.json` - Dépendances et scripts
 - `vite.config.js` - Configuration Vite + Vitest
 - `eslint.config.js` - Linting
 - `.gitignore` - Fichiers à ignorer
 
 **Scripts npm disponibles :**
+
 ```bash
 npm run dev           # Serveur de développement
 npm run build         # Build de production
@@ -144,12 +163,14 @@ npm run lint          # Vérification du code
 ## 📊 Statistiques du Projet
 
 ### Code Source
+
 - **Fichiers JavaScript/JSX** : 9 fichiers
 - **Fichiers de test** : 2 fichiers (15 tests)
 - **Workflows CI/CD** : 2 fichiers YAML
 - **Fichiers de documentation** : 5 fichiers Markdown
 
 ### Build de Production
+
 ```
 dist/index.html         0.49 kB  (gzip: 0.30 kB)
 dist/assets/*.css       2.24 kB  (gzip: 0.94 kB)
@@ -159,6 +180,7 @@ Total                 286.84 kB  (gzip: 91.47 kB)
 ```
 
 ### Tests
+
 ```
 ✓ TodoList Component  : 9/9 tests passés
 ✓ Logger             : 6/6 tests passés
@@ -167,6 +189,7 @@ Total                 286.84 kB  (gzip: 91.47 kB)
 ```
 
 ### Commits Git
+
 ```
 ✓ 2 commits créés
 ✓ 25 fichiers sous contrôle de version
@@ -180,6 +203,7 @@ Total                 286.84 kB  (gzip: 91.47 kB)
 ### Pour Utiliser le Projet
 
 1. **Lancer l'application localement :**
+
    ```bash
    npm install
    npm run dev
@@ -187,11 +211,13 @@ Total                 286.84 kB  (gzip: 91.47 kB)
    ```
 
 2. **Voir l'observabilité en action :**
+
    - Ouvrir la console du navigateur (F12)
    - Ajouter/compléter/supprimer des tâches
    - Observer les logs, métriques et traces
 
 3. **Lancer les tests :**
+
    ```bash
    npm test -- --run
    ```
@@ -205,17 +231,20 @@ Total                 286.84 kB  (gzip: 91.47 kB)
 ### Pour Déployer sur GitHub
 
 1. **Créer un repository sur GitHub :**
+
    ```bash
    # Sur GitHub.com, créer un nouveau repository "tp2devops"
    ```
 
 2. **Pousser le code :**
+
    ```bash
    git remote add origin https://github.com/VOTRE-USERNAME/tp2devops.git
    git push -u origin main
    ```
 
 3. **Activer GitHub Pages :**
+
    - Aller dans Settings → Pages
    - Source : GitHub Actions
    - Le site sera disponible sur : `https://VOTRE-USERNAME.github.io/tp2devops/`
@@ -227,6 +256,7 @@ Total                 286.84 kB  (gzip: 91.47 kB)
 Suivre le guide : `docs/SCREENSHOTS_GUIDE.md`
 
 23 captures d'écran recommandées pour illustrer :
+
 - L'interface de l'application
 - La console d'observabilité
 - Les résultats des tests
@@ -278,28 +308,32 @@ tp2devops/
 ## 🎓 Apprentissages et Bonnes Pratiques
 
 ### DevOps
+
 ✅ Pipeline CI/CD automatisé  
 ✅ Tests automatisés à chaque commit  
 ✅ Déploiement continu  
-✅ Infrastructure as Code (workflows YAML)  
+✅ Infrastructure as Code (workflows YAML)
 
 ### Observabilité
+
 ✅ Trois piliers (logs, métriques, traces)  
 ✅ Logs structurés en JSON  
 ✅ Métriques métier et performance  
-✅ Tracing distribué avec OpenTelemetry  
+✅ Tracing distribué avec OpenTelemetry
 
 ### Qualité du Code
+
 ✅ Tests unitaires exhaustifs  
 ✅ Linting automatique  
 ✅ Documentation complète  
-✅ Git avec commits sémantiques  
+✅ Git avec commits sémantiques
 
 ### React/Modern Web
+
 ✅ Hooks (useState, useEffect)  
 ✅ Composants fonctionnels  
 ✅ Tests avec Testing Library  
-✅ Build optimisé avec Vite  
+✅ Build optimisé avec Vite
 
 ---
 
@@ -337,6 +371,7 @@ Le fichier **`RAPPORT.md`** contient :
 **Projet complet et opérationnel !**
 
 Tous les objectifs du TP2 DevOps ont été atteints :
+
 - ✅ Application web fonctionnelle
 - ✅ Pipeline CI/CD avec GitHub Actions
 - ✅ Observabilité complète (logs, métriques, traces)
@@ -351,4 +386,3 @@ Le projet est prêt à être présenté, déployé et utilisé comme référence
 **Statut** : ✅ COMPLET  
 **Tests** : ✅ 15/15 PASSÉS  
 **Documentation** : ✅ COMPLÈTE EN FRANÇAIS
-
