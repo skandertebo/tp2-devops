@@ -4,14 +4,14 @@
  */
 
 const LOG_LEVELS = {
-  DEBUG: 'DEBUG',
-  INFO: 'INFO',
-  WARN: 'WARN',
-  ERROR: 'ERROR'
+  DEBUG: "DEBUG",
+  INFO: "INFO",
+  WARN: "WARN",
+  ERROR: "ERROR",
 };
 
 class Logger {
-  constructor(context = 'App') {
+  constructor(context = "App") {
     this.context = context;
   }
 
@@ -21,7 +21,7 @@ class Logger {
       level,
       context: this.context,
       message,
-      ...metadata
+      ...metadata,
     };
   }
 
@@ -47,4 +47,3 @@ class Logger {
 }
 
 export default Logger;
-
