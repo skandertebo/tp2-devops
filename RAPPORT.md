@@ -1,22 +1,10 @@
-# Rapport TP2 DevOps - CI/CD et Observabilité
-
-## Table des Matières
-
-1. [Introduction](#introduction)
-2. [Architecture du Projet](#architecture-du-projet)
-3. [Application React Todo List](#application-react-todo-list)
-4. [Tests Unitaires](#tests-unitaires)
-5. [Pipeline CI/CD](#pipeline-cicd)
-6. [Solution d'Observabilité](#solution-dobservabilité)
-7. [Déploiement](#déploiement)
-8. [Démonstration et Résultats](#démonstration-et-résultats)
-9. [Conclusion](#conclusion)
+# TP2 DevOps - CI/CD et Observabilité
 
 ---
 
 ## Introduction
 
-### Objectif du Projet
+### Objectif du TP
 
 Ce projet a pour but de démontrer l'intégration complète d'un pipeline CI/CD dans une application web moderne, ainsi que la mise en place d'une solution d'observabilité complète incluant :
 
@@ -30,7 +18,7 @@ Ce projet a pour but de démontrer l'intégration complète d'un pipeline CI/CD 
 - **Backend** : Node.js/Express (instrumenté OpenTelemetry)
 - **Testing** : Vitest + React Testing Library
 - **CI/CD** : GitHub Actions (Docker + Kubernetes)
-- **Observabilité** : OpenTelemetry Collector, **Tempo** (traces), **Loki** (logs), **Prometheus** (métriques), **Grafana** (visualisation)
+- **Observabilité** : OpenTelemetry Collector, **Tempo** (traces), **Loki** (logs), **Promtail** (collecteur de logs), **Prometheus** (métriques), **Grafana** (visualisation)
 
 ---
 
@@ -56,48 +44,13 @@ tp2devops/
 │   └── test/                # Configuration tests
 ├── backend/                 # API Express + OTel + Prometheus + Pino
 ├── k8s/                     # Manifests Kubernetes (Prom, Loki, Tempo, OTel, Grafana, app)
-├── config/                  # Config docker-compose (Prom, Tempo, Collector, Grafana)
+├── config/                  # Config docker-compose (Prom, Tempo, Collector, Grafana, Promtail)
 ├── docker-compose.yml       # Stack locale complète
+|-- Dockerfile # Dockerfile pour backend
+|-- Dockerfile.dev # Dockerfile pour frontend
 ├── package.json
 └── vite.config.js
 ```
-
-### Choix Techniques
-
-#### 1. Vite vs Create React App
-
-**Choix** : Vite
-
-**Raisons** :
-
-- Build beaucoup plus rapide (utilise esbuild)
-- Hot Module Replacement (HMR) instantané
-- Configuration simplifiée
-- Meilleur support TypeScript/JSX
-- Optimisation automatique pour la production
-
-#### 2. Vitest vs Jest
-
-**Choix** : Vitest
-
-**Raisons** :
-
-- Intégration native avec Vite
-- API compatible avec Jest
-- Exécution ultra-rapide
-- Support ESM natif
-- Watch mode intelligent
-
-#### 3. Happy-DOM vs JSDOM
-
-**Choix** : Happy-DOM
-
-**Raisons** :
-
-- Plus léger et plus rapide
-- Meilleure compatibilité avec les modules ESM
-- Moins de dépendances
-- Performances optimales pour les tests
 
 ---
 
@@ -129,62 +82,6 @@ L'application Todo List est volontairement simple mais fonctionnelle :
    - Nombre de tâches complétées
    - Nombre de tâches en cours
 
-### Code Principal (TodoList.jsx)
-
-```javascript
-import { useState, useEffect } from "react";
-import Logger from "../observability/logger";
-import { metrics } from "../observability/metrics";
-import { createSpan } from "../observability/tracing";
-
-const logger = new Logger("TodoList");
-
-function TodoList() {
-  const [todos, setTodos] = useState([]);
-  const [inputValue, setInputValue] = useState("");
-
-  // Initialisation de l'observabilité
-  useEffect(() => {
-    logger.info("TodoList component mounted");
-    metrics.setGauge("todos_total", todos.length);
-  }, []);
-
-  // Mise à jour des métriques
-  useEffect(() => {
-    metrics.setGauge("todos_total", todos.length);
-    metrics.setGauge(
-      "todos_completed",
-      todos.filter((t) => t.completed).length
-    );
-    metrics.setGauge("todos_pending", todos.filter((t) => !t.completed).length);
-  }, [todos]);
-
-  // Désormais, les todos passent par l'API backend
-  const addTodo = async () => {
-    await createSpan("add_todo", { todoText: inputValue }, async () => {
-      if (inputValue.trim() === "") return;
-      const created = await createTodo(inputValue.trim());
-      setTodos([...todos, created]);
-      setInputValue("");
-    });
-  };
-
-  // ... autres méthodes
-}
-```
-
-### Interface Utilisateur
-
-L'interface utilise un design moderne avec :
-
-- **Dégradé de fond** violet/bleu pour l'esthétique
-- **Carte blanche centrée** pour le contenu
-- **Animations au survol** pour la réactivité
-- **Statistiques visuelles** en temps réel
-- **Responsive design** adaptatif
-
----
-
 ## Tests Unitaires
 
 ### Stratégie de Test
@@ -195,61 +92,6 @@ Nous avons implémenté **15 tests unitaires** couvrant :
 - Les interactions utilisateur
 - La logique métier
 - Les outils d'observabilité
-
-### Tests du Composant TodoList
-
-```javascript
-describe("TodoList", () => {
-  it("should render the todo list component", () => {
-    render(<TodoList />);
-    expect(screen.getByText("📝 Liste de Tâches")).toBeInTheDocument();
-  });
-
-  it("should add a new todo when clicking add button", async () => {
-    const user = userEvent.setup();
-    render(<TodoList />);
-
-    const input = screen.getByTestId("todo-input");
-    const addButton = screen.getByTestId("add-button");
-
-    await user.type(input, "Test Todo");
-    await user.click(addButton);
-
-    expect(screen.getByText("Test Todo")).toBeInTheDocument();
-  });
-
-  it("should toggle todo completion status", async () => {
-    // Test de la complétion des tâches
-  });
-
-  it("should delete a todo", async () => {
-    // Test de la suppression
-  });
-
-  it("should display correct statistics", async () => {
-    // Test des statistiques
-  });
-});
-```
-
-### Tests du Logger
-
-```javascript
-describe("Logger", () => {
-  it("should log info messages", () => {
-    logger.info("Info message");
-    const loggedMessage = JSON.parse(consoleSpies.info.mock.calls[0][0]);
-    expect(loggedMessage.level).toBe("INFO");
-    expect(loggedMessage.message).toBe("Info message");
-  });
-
-  it("should include timestamp in logs", () => {
-    logger.info("Test message");
-    const loggedMessage = JSON.parse(consoleSpies.info.mock.calls[0][0]);
-    expect(loggedMessage.timestamp).toBeDefined();
-  });
-});
-```
 
 ### Résultats des Tests
 
@@ -284,7 +126,7 @@ Notre pipeline CI/CD est composé de **3 jobs principaux** :
        │
        ▼
 ┌─────────────┐
-│   DEPLOY    │  → Déploiement sur GitHub Pages
+│   DEPLOY    │  → Déploiement en utilisant kubectl
 └─────────────┘
 ```
 
@@ -347,9 +189,9 @@ dist/assets/index-*.js          284.11 kB │ gzip: 90.23 kB
 
 **Étapes** :
 
-1. Configuration de GitHub Pages
-2. Upload de l'artifact vers Pages
-3. Déploiement automatique
+1. Application de kubectl
+2. Attente de rollout de kubectl
+3. Execution de smoketests
 
 **Permissions requises** :
 
@@ -401,6 +243,36 @@ jobs:
 L'observabilité repose sur **trois piliers** : Logs, Métriques et Traces.
 
 ### 1. Logs Structurés
+
+#### Architecture de Collecte des Logs
+
+La collecte des logs utilise une architecture complète :
+
+- **Backend** : Logs structurés JSON via Pino
+- **Promtail** : Agent de collecte qui surveille les conteneurs Docker
+- **Loki** : Système d'agrégation et de stockage des logs
+- **Grafana** : Interface de visualisation et de requête
+
+#### Configuration Promtail
+
+```yaml
+# config/promtail.yml
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker-containers
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: docker
+          container: backend
+          __path__: /var/lib/docker/containers/*/*.log
+```
 
 #### Implémentation (logger.js)
 
@@ -718,7 +590,13 @@ useEffect(() => {
 ### Docker Compose (local)
 
 - Démarrage: `docker compose up -d`
-- Accès: Grafana http://localhost:3000, Prometheus http://localhost:9090, Collector http://localhost:8888/metrics, Backend http://localhost:3001, Frontend http://localhost:5173
+- Accès:
+  - Grafana http://localhost:3000 (admin/admin)
+  - Prometheus http://localhost:9090
+  - OpenTelemetry Collector http://localhost:8888/metrics
+  - Backend API http://localhost:3001
+  - Frontend http://localhost:5173
+  - Promtail collecte automatiquement les logs des conteneurs Docker
 
 ### Kubernetes (Minikube)
 
@@ -769,49 +647,41 @@ dist/assets/index-*.js          284.11 kB │ gzip: 90.23 kB
 ✓ built in 504ms
 ```
 
-### Logs d'Observabilité (Exemple d'Exécution)
+### Traces d'Observabilité (Exemple d'Exécution)
 
-```json
-{"timestamp":"2025-10-19T15:30:12.456Z","level":"INFO","context":"App","message":"Application starting..."}
-{"timestamp":"2025-10-19T15:30:12.567Z","level":"INFO","context":"App","message":"Observability initialized successfully"}
-{"timestamp":"2025-10-19T15:30:12.789Z","level":"INFO","context":"TodoList","message":"TodoList component mounted"}
-[METRIC] Gauge todos_total = 0
-[METRIC] Gauge todos_completed = 0
-[METRIC] Gauge todos_pending = 0
-[WEB VITAL] FCP: { name: 'FCP', value: 234.5, rating: 'good' }
-[WEB VITAL] TTFB: { name: 'TTFB', value: 123.4, rating: 'good' }
-{"timestamp":"2025-10-19T15:30:15.123Z","level":"INFO","context":"TodoList","message":"Todo added","todoId":1729349415123,"todoText":"Acheter du pain"}
-[METRIC] Counter todos_added incremented to 1
-[METRIC] Gauge todos_total = 1
-[METRIC] Gauge todos_pending = 1
-```
+- Etape 1: Ouverture de l'application et l'ajout d'un todo **Clean House**
+- Etape 2: Marquer ce TODO comme complet
 
-### Métriques Finales
+<image placeholder>
 
-#### Performances
+Ouverture de Grafana -> Explore -> Tempo:
 
-- **Build time** : ~500ms
-- **Test execution** : ~700ms
-- **Bundle size (gzipped)** : 90.23 kB
-- **First Contentful Paint** : < 300ms
-- **Largest Contentful Paint** : < 1.5s
+<image placeholder>
 
-#### Qualité Code
+Le trace de l'operation PUT relative a ce TODO est marqué dans le dashboard de Tempo
 
-- **Tests unitaires** : 15/15 ✓
-- **Couverture** : Fonctions critiques couvertes
-- **Linting** : Conforme aux standards ESLint
-- **Build** : Aucune erreur
+### Dashboard Prometheus dans Grafana
+
+Voici le dashboard Prometheus qui mesure le metric suivant: **Active Todos**
+<image placeholder>
+
+### Requêtes de Logs dans Grafana
+
+Avec Promtail configuré, les logs sont automatiquement collectés et disponibles dans Grafana :
+
+1. **Accès** : Grafana → Explore → Loki
+2. **Requêtes utiles** :
+   - `{container="backend"}` : Logs du backend uniquement
+   - `{job="docker"} |= "todo"` : Logs contenant "todo"
+   - `{container="backend"} | json` : Logs structurés JSON
+
+<image placeholder>
 
 ---
 
 ## Conclusion
 
 ### Objectifs Atteints
-
-✅ **Application fonctionnelle** : Todo List React.js moderne et responsive
-
-✅ **Tests complets** : 15 tests unitaires couvrant les fonctionnalités principales
 
 ✅ **Pipeline CI/CD** :
 
@@ -821,118 +691,8 @@ dist/assets/index-*.js          284.11 kB │ gzip: 90.23 kB
 
 ✅ **Observabilité complète** :
 
-- **Logs structurés** : Format JSON avec contexte et métadonnées
-- **Métriques** : Gauges et counters pour suivre l'usage
-- **Traces** : OpenTelemetry pour le suivi distribué
+- **Logs structurés** : Format JSON avec contexte et métadonnées, collectés par Promtail
+- **Métriques** : Gauges et counters pour suivre l'usage via Prometheus
+- **Traces** : OpenTelemetry pour le suivi distribué via Tempo
 - **Performance** : Web Vitals pour les métriques UX
-
-### Bonnes Pratiques Démontrées
-
-1. **Infrastructure as Code** : Workflows GitHub Actions versionnés
-2. **Tests automatisés** : Validation continue de la qualité
-3. **Déploiement continu** : De la branche main vers la production
-4. **Observabilité** : Trois piliers (logs, métriques, traces)
-5. **Documentation** : README et rapport détaillés
-6. **Modularité** : Séparation des responsabilités
-
-### Points d'Amélioration Possibles
-
-1. **Couverture de tests** : Ajouter des tests d'intégration
-2. **Observabilité backend** : Connecter à Grafana/Prometheus
-3. **Environnements multiples** : Dev, staging, production
-4. **Sécurité** : Scan de vulnérabilités (Dependabot, Snyk)
-5. **Performance** : Monitoring continu avec Lighthouse CI
-6. **Persistence** : Sauvegarder les todos (LocalStorage ou API)
-
-### Apprentissages Clés
-
-**DevOps** :
-
-- Configuration de pipelines CI/CD
-- Automatisation des tests et déploiements
-- Gestion des artifacts et environnements
-
-**Observabilité** :
-
-- Importance des logs structurés
-- Métriques pour mesurer le succès
-- Tracing pour debugger les problèmes
-- Web Vitals pour l'expérience utilisateur
-
-**Qualité** :
-
-- Tests automatisés = confiance
-- Linting = code cohérent
-- Documentation = maintenabilité
-
-### Perspective Production
-
-Pour une mise en production réelle, il faudrait :
-
-1. **Sécurité** :
-
-   - HTTPS obligatoire
-   - CSP headers
-   - Scan de dépendances
-
-2. **Monitoring** :
-
-   - Alertes sur les erreurs
-   - Dashboards de métriques
-   - Logs centralisés (ELK, Loki)
-
-3. **Performance** :
-
-   - CDN pour les assets
-   - Cache HTTP
-   - Lazy loading
-
-4. **Observabilité** :
-
-   - Export vers Prometheus
-   - Traces vers Jaeger
-   - Logs vers Elasticsearch
-
-5. **Availability** :
-   - Healthchecks
-   - Rollback automatique
-   - Blue/Green deployment
-
----
-
-## Annexes
-
-### Commandes Utiles
-
-```bash
-# Développement
-npm run dev              # Serveur de dev
-npm test                 # Tests en mode watch
-npm run build            # Build de production
-npm run preview          # Prévisualiser le build
-
-# CI/CD
-npm ci                   # Installation clean (CI)
-npm test -- --run        # Tests une seule fois
-npm run test:coverage    # Rapport de couverture
-npm run lint             # Vérification du code
-```
-
-### Références
-
-- [Vite Documentation](https://vitejs.dev/)
-- [Vitest](https://vitest.dev/)
-- [OpenTelemetry JS](https://opentelemetry.io/docs/languages/js/)
-- [Web Vitals](https://web.dev/vitals/)
-- [GitHub Actions](https://docs.github.com/actions)
-- [React Testing Library](https://testing-library.com/react)
-
-### Crédits
-
-**Projet** : TP2 DevOps - CI/CD et Observabilité  
-**Date** : Octobre 2025  
-**Technologies** : React.js, Vite, Vitest, OpenTelemetry, GitHub Actions
-
----
-
-**Fin du Rapport**
+- **Visualisation** : Interface unifiée Grafana pour logs, métriques et traces
