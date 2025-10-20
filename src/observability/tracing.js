@@ -5,19 +5,23 @@
 
 import { trace } from "@opentelemetry/api";
 import { ZoneContextManager } from "@opentelemetry/context-zone";
-import {
-  ConsoleSpanExporter,
-  SimpleSpanProcessor,
-} from "@opentelemetry/sdk-trace-base";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
 
 let provider;
 let tracer;
 
 export function initializeTracing() {
-  // Create a provider with the span processor configured in the ctor
+  const otlpEndpoint =
+    import.meta?.env?.VITE_OTLP_HTTP_URL || "http://localhost:4318/v1/traces";
+
+  // Create exporter for OTLP/HTTP
+  const exporter = new OTLPTraceExporter({ url: otlpEndpoint });
+
+  // In OTel JS v2, prefer passing spanProcessors in the ctor
   provider = new WebTracerProvider({
-    spanProcessors: [new SimpleSpanProcessor(new ConsoleSpanExporter())],
+    spanProcessors: [new BatchSpanProcessor(exporter)],
   });
 
   // Register the provider
@@ -28,7 +32,7 @@ export function initializeTracing() {
   // Get a tracer
   tracer = trace.getTracer("todo-app", "1.0.0");
 
-  console.info("[TRACING] OpenTelemetry tracing initialized");
+  console.info("[TRACING] OpenTelemetry tracing initialized (OTLP HTTP)");
 }
 
 export function getTracer() {

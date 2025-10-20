@@ -1,29 +1,30 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # OpenTelemetry Collector
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.104.0
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
-      - ./k8s/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./config/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "8888:8888"   # Prometheus metrics
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "8888:8888" # Prometheus metrics
     networks:
       - observability
+    hostname: otel-collector
 
   # Tempo - Distributed tracing
   tempo:
     image: grafana/tempo:2.3.1
-    command: [ "-config.file=/etc/tempo.yaml" ]
+    command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./config/tempo.yaml:/etc/tempo.yaml
       - tempo-data:/tmp/tempo
     ports:
-      - "3200:3200"   # Tempo HTTP
-      - "4317"        # OTLP gRPC receiver
+      - "3200:3200" # Tempo HTTP
+      - "4317" # OTLP gRPC receiver
     networks:
       - observability
 
@@ -42,10 +43,10 @@ services:
   prometheus:
     image: prom/prometheus:v2.48.1
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-remote-write-receiver'
-      - '--enable-feature=exemplar-storage'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-remote-write-receiver"
+      - "--enable-feature=exemplar-storage"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
@@ -116,4 +117,3 @@ volumes:
   loki-data:
   prometheus-data:
   grafana-data:
-
