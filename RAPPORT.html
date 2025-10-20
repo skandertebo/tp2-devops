@@ -1,0 +1,674 @@
+<h1 id="tp2-devops---cicd-et-observabilité">TP2 DevOps - CI/CD et
+Observabilité</h1>
+<hr />
+<h2 id="introduction">Introduction</h2>
+<h3 id="objectif-du-tp">Objectif du TP</h3>
+<p>Ce projet a pour but de démontrer l’intégration complète d’un
+pipeline CI/CD dans une application web moderne, ainsi que la mise en
+place d’une solution d’observabilité complète incluant :</p>
+<ul>
+<li><strong>Logs structurés</strong> : Pour tracer les événements de
+l’application</li>
+<li><strong>Métriques</strong> : Pour mesurer les performances et
+l’usage</li>
+<li><strong>Traces distribuées</strong> : Pour suivre le parcours des
+requêtes</li>
+</ul>
+<h3 id="technologies-choisies">Technologies Choisies</h3>
+<ul>
+<li><strong>Frontend</strong> : React.js 19 avec Vite</li>
+<li><strong>Backend</strong> : Node.js/Express (instrumenté
+OpenTelemetry)</li>
+<li><strong>Testing</strong> : Vitest + React Testing Library</li>
+<li><strong>CI/CD</strong> : GitHub Actions (Docker + Kubernetes)</li>
+<li><strong>Observabilité</strong> : OpenTelemetry Collector,
+<strong>Tempo</strong> (traces), <strong>Loki</strong> (logs),
+<strong>Promtail</strong> (collecteur de logs),
+<strong>Prometheus</strong> (métriques), <strong>Grafana</strong>
+(visualisation)</li>
+</ul>
+<hr />
+<h2 id="architecture-du-projet">Architecture du Projet</h2>
+<h3 id="structure-des-dossiers">Structure des Dossiers</h3>
+<pre><code>tp2devops/
+├── .github/workflows/        # Pipelines CI/CD
+│   ├── ci.yml               # Pipeline principal
+│   └── observability-check.yml
+├── src/
+│   ├── components/          # Composants React
+│   │   ├── TodoList.jsx
+│   │   ├── TodoList.css
+│   │   └── TodoList.test.jsx
+│   ├── observability/       # Outils FE (logs, tracing FE vers OTLP)
+│   │   ├── logger.js
+│   │   ├── logger.test.js
+│   │   ├── metrics.js
+│   │   └── tracing.js
+│   └── test/                # Configuration tests
+├── backend/                 # API Express + OTel + Prometheus + Pino
+├── k8s/                     # Manifests Kubernetes (Prom, Loki, Tempo, OTel, Grafana, app)
+├── config/                  # Config docker-compose (Prom, Tempo, Collector, Grafana, Promtail)
+├── docker-compose.yml       # Stack locale complète
+|-- Dockerfile # Dockerfile pour backend
+|-- Dockerfile.dev # Dockerfile pour frontend
+├── package.json
+└── vite.config.js</code></pre>
+<hr />
+<h2 id="application-react-todo-list">Application React Todo List</h2>
+<h3 id="fonctionnalités-implémentées">Fonctionnalités Implémentées</h3>
+<p>L’application Todo List est volontairement simple mais fonctionnelle
+:</p>
+<ol type="1">
+<li><p><strong>Ajouter une tâche</strong></p>
+<ul>
+<li>Saisie de texte</li>
+<li>Validation (pas de tâche vide)</li>
+<li>Ajout par clic ou touche Entrée</li>
+</ul></li>
+<li><p><strong>Marquer comme complétée</strong></p>
+<ul>
+<li>Checkbox interactive</li>
+<li>Effet visuel (texte barré, opacité)</li>
+<li>État persistant dans le composant</li>
+</ul></li>
+<li><p><strong>Supprimer une tâche</strong></p>
+<ul>
+<li>Bouton de suppression avec icône</li>
+<li>Suppression immédiate</li>
+</ul></li>
+<li><p><strong>Statistiques en temps réel</strong></p>
+<ul>
+<li>Total des tâches</li>
+<li>Nombre de tâches complétées</li>
+<li>Nombre de tâches en cours</li>
+</ul></li>
+</ol>
+<h2 id="tests-unitaires">Tests Unitaires</h2>
+<h3 id="stratégie-de-test">Stratégie de Test</h3>
+<p>Nous avons implémenté <strong>15 tests unitaires</strong> couvrant
+:</p>
+<ul>
+<li>Le rendu des composants</li>
+<li>Les interactions utilisateur</li>
+<li>La logique métier</li>
+<li>Les outils d’observabilité</li>
+</ul>
+<h3 id="résultats-des-tests">Résultats des Tests</h3>
+<pre><code> ✓ src/observability/logger.test.js (6 tests) 3ms
+ ✓ src/components/TodoList.test.jsx (9 tests) 269ms
+
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+   Duration  712ms</code></pre>
+<p><strong>Couverture de code</strong> : Les tests couvrent les
+fonctionnalités critiques de l’application.</p>
+<hr />
+<h2 id="pipeline-cicd">Pipeline CI/CD</h2>
+<h3 id="architecture-du-pipeline">Architecture du Pipeline</h3>
+<p>Notre pipeline CI/CD est composé de <strong>3 jobs
+principaux</strong> :</p>
+<pre><code>┌─────────────┐
+│    TEST     │  → Linting + Tests unitaires
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│    BUILD    │  → Construction de l&#39;application
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   DEPLOY    │  → Déploiement en utilisant kubectl
+└─────────────┘</code></pre>
+<h3 id="configuration-github-actions">Configuration GitHub Actions</h3>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ci-k8s.yml (actif)</span><span class="kw">:</span><span class="at"> build &amp; push d&#39;images Docker (frontend/backend) et étapes de déploiement Kubernetes (commentées).</span></span></code></pre></div>
+<h3 id="étapes-détaillées">Étapes Détaillées</h3>
+<h4 id="job-test">1. Job TEST</h4>
+<p><strong>Objectif</strong> : Valider la qualité du code</p>
+<p><strong>Étapes</strong> :</p>
+<ol type="1">
+<li><strong>Checkout</strong> : Récupération du code source</li>
+<li><strong>Setup Node.js</strong> : Installation de Node.js 20 avec
+cache npm</li>
+<li><strong>Install dependencies</strong> : <code>npm ci</code>
+(installation clean et déterministe)</li>
+<li><strong>Linting</strong> : Vérification du style de code avec
+ESLint</li>
+<li><strong>Tests</strong> : Exécution de tous les tests unitaires avec
+Vitest</li>
+</ol>
+<p><strong>Durée moyenne</strong> : ~1-2 minutes</p>
+<h4 id="job-build">2. Job BUILD</h4>
+<p><strong>Objectif</strong> : Compiler l’application pour la
+production</p>
+<p><strong>Étapes</strong> :</p>
+<ol type="1">
+<li>Checkout du code</li>
+<li>Installation des dépendances</li>
+<li><strong>Build</strong> : Compilation avec Vite
+(<code>npm run build</code>)
+<ul>
+<li>Minification du code</li>
+<li>Tree-shaking</li>
+<li>Code splitting</li>
+<li>Optimisation des assets</li>
+</ul></li>
+<li><strong>Upload artifacts</strong> : Sauvegarde du dossier
+<code>dist/</code> pour 7 jours</li>
+</ol>
+<p><strong>Durée moyenne</strong> : ~1 minute</p>
+<p><strong>Résultat du build</strong> :</p>
+<pre><code>dist/index.html                   0.49 kB │ gzip:  0.30 kB
+dist/assets/index-*.css           2.24 kB │ gzip:  0.94 kB
+dist/assets/index-*.js          284.11 kB │ gzip: 90.23 kB</code></pre>
+<h4 id="job-deploy">3. Job DEPLOY</h4>
+<p><strong>Objectif</strong> : Déployer l’application sur GitHub
+Pages</p>
+<p><strong>Conditions</strong> :</p>
+<ul>
+<li>Exécution uniquement sur la branche <code>main</code></li>
+<li>Après succès des jobs TEST et BUILD</li>
+<li>Type d’événement : <code>push</code> (pas sur PR)</li>
+</ul>
+<p><strong>Étapes</strong> :</p>
+<ol type="1">
+<li>Application de kubectl</li>
+<li>Attente de rollout de kubectl</li>
+<li>Execution de smoketests</li>
+</ol>
+<p><strong>Permissions requises</strong> :</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pages</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">id-token</span><span class="kw">:</span><span class="at"> write</span></span></code></pre></div>
+<h3 id="pipeline-dobservabilité">Pipeline d’Observabilité</h3>
+<p>Un second pipeline vérifie l’intégration de l’observabilité :</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Observability Check</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">main</span><span class="kw">,</span><span class="at"> develop</span><span class="kw">]</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">schedule</span><span class="kw">:</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">cron</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;0 9 * * *&quot;</span><span class="co"> # Tous les jours à 9h UTC</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">observability</span><span class="kw">:</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">steps</span><span class="kw">:</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Check for logging implementation</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> grep -r &quot;logger\.&quot; src/</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Check for metrics implementation</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> grep -r &quot;metrics\.&quot; src/</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Check for tracing implementation</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">run</span><span class="kw">:</span><span class="at"> grep -r &quot;createSpan&quot; src/</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Run smoke test</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a><span class="fu">        run</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>          npm run dev &amp;</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>          sleep 10</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>          kill $!</span></code></pre></div>
+<p><strong>Objectif</strong> : S’assurer que les outils d’observabilité
+sont bien utilisés dans le code.</p>
+<hr />
+<h2 id="solution-dobservabilité">Solution d’Observabilité</h2>
+<p>L’observabilité repose sur <strong>trois piliers</strong> : Logs,
+Métriques et Traces.</p>
+<h3 id="logs-structurés">1. Logs Structurés</h3>
+<h4 id="architecture-de-collecte-des-logs">Architecture de Collecte des
+Logs</h4>
+<p>La collecte des logs utilise une architecture complète :</p>
+<ul>
+<li><strong>Backend</strong> : Logs structurés JSON via Pino</li>
+<li><strong>Promtail</strong> : Agent de collecte qui surveille les
+conteneurs Docker</li>
+<li><strong>Loki</strong> : Système d’agrégation et de stockage des
+logs</li>
+<li><strong>Grafana</strong> : Interface de visualisation et de
+requête</li>
+</ul>
+<h4 id="configuration-promtail">Configuration Promtail</h4>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># config/promtail.yml</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">server</span><span class="kw">:</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">http_listen_port</span><span class="kw">:</span><span class="at"> </span><span class="dv">9080</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">grpc_listen_port</span><span class="kw">:</span><span class="at"> </span><span class="dv">0</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="fu">clients</span><span class="kw">:</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">url</span><span class="kw">:</span><span class="at"> http://loki:3100/loki/api/v1/push</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="fu">scrape_configs</span><span class="kw">:</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">job_name</span><span class="kw">:</span><span class="at"> docker-containers</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">static_configs</span><span class="kw">:</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">targets</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">localhost</span><span class="kw">]</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">labels</span><span class="kw">:</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">job</span><span class="kw">:</span><span class="at"> docker</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">container</span><span class="kw">:</span><span class="at"> backend</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">__path__</span><span class="kw">:</span><span class="at"> /var/lib/docker/containers/*/*.log</span></span></code></pre></div>
+<h4 id="implémentation-logger.js">Implémentation (logger.js)</h4>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Logger {</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">constructor</span>(context <span class="op">=</span> <span class="st">&quot;App&quot;</span>) {</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">context</span> <span class="op">=</span> context<span class="op">;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">formatMessage</span>(level<span class="op">,</span> message<span class="op">,</span> metadata <span class="op">=</span> {}) {</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">timestamp</span><span class="op">:</span> <span class="kw">new</span> <span class="bu">Date</span>()<span class="op">.</span><span class="fu">toISOString</span>()<span class="op">,</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>      level<span class="op">,</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">context</span><span class="op">:</span> <span class="kw">this</span><span class="op">.</span><span class="at">context</span><span class="op">,</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>      message<span class="op">,</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>      <span class="op">...</span>metadata<span class="op">,</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    }<span class="op">;</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">info</span>(message<span class="op">,</span> metadata) {</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> log <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="fu">formatMessage</span>(<span class="st">&quot;INFO&quot;</span><span class="op">,</span> message<span class="op">,</span> metadata)<span class="op">;</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">info</span>(<span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(log))<span class="op">;</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>  <span class="co">// warn(), error(), debug() ...</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="caractéristiques">Caractéristiques</h4>
+<ul>
+<li><strong>Format JSON</strong> : Facilite le parsing et l’analyse</li>
+<li><strong>Timestamp ISO</strong> : Traçabilité temporelle précise</li>
+<li><strong>Contexte</strong> : Identification de la source du log</li>
+<li><strong>Métadonnées</strong> : Informations additionnelles
+dynamiques</li>
+<li><strong>Niveaux de log</strong> : DEBUG, INFO, WARN, ERROR</li>
+</ul>
+<h4 id="exemple-de-log">Exemple de Log</h4>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;timestamp&quot;</span><span class="fu">:</span> <span class="st">&quot;2025-10-19T15:27:51.234Z&quot;</span><span class="fu">,</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;level&quot;</span><span class="fu">:</span> <span class="st">&quot;INFO&quot;</span><span class="fu">,</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;context&quot;</span><span class="fu">:</span> <span class="st">&quot;TodoList&quot;</span><span class="fu">,</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;message&quot;</span><span class="fu">:</span> <span class="st">&quot;Todo added&quot;</span><span class="fu">,</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;todoId&quot;</span><span class="fu">:</span> <span class="dv">1729349271234</span><span class="fu">,</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;todoText&quot;</span><span class="fu">:</span> <span class="st">&quot;Acheter du pain&quot;</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h4 id="utilisation-dans-lapplication">Utilisation dans
+l’Application</h4>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> logger <span class="op">=</span> <span class="kw">new</span> <span class="fu">Logger</span>(<span class="st">&quot;TodoList&quot;</span>)<span class="op">;</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co">// Log d&#39;information</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>logger<span class="op">.</span><span class="fu">info</span>(<span class="st">&quot;TodoList component mounted&quot;</span>)<span class="op">;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Log d&#39;avertissement avec métadonnées</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>logger<span class="op">.</span><span class="fu">warn</span>(<span class="st">&quot;Attempted to add empty todo&quot;</span>)<span class="op">;</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="co">// Log d&#39;erreur avec contexte</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>logger<span class="op">.</span><span class="fu">error</span>(<span class="st">&quot;Failed to save todo&quot;</span><span class="op">,</span> { <span class="dt">error</span><span class="op">:</span> error<span class="op">.</span><span class="at">message</span> })<span class="op">;</span></span></code></pre></div>
+<h3 id="métriques">2. Métriques</h3>
+<h4 id="implémentation-metrics.js">Implémentation (metrics.js)</h4>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MetricsCollector {</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">constructor</span>() {</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">counters</span> <span class="op">=</span> {}<span class="op">;</span> <span class="co">// Valeurs qui augmentent</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">gauges</span> <span class="op">=</span> {}<span class="op">;</span> <span class="co">// Valeurs qui changent</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">histograms</span> <span class="op">=</span> {}<span class="op">;</span> <span class="co">// Distributions</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">incrementCounter</span>(name<span class="op">,</span> value <span class="op">=</span> <span class="dv">1</span><span class="op">,</span> labels <span class="op">=</span> {}) {</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> key <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="fu">generateKey</span>(name<span class="op">,</span> labels)<span class="op">;</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="op">!</span><span class="kw">this</span><span class="op">.</span><span class="at">counters</span>[key]) {</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="at">counters</span>[key] <span class="op">=</span> { name<span class="op">,</span> labels<span class="op">,</span> <span class="dt">value</span><span class="op">:</span> <span class="dv">0</span> }<span class="op">;</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">counters</span>[key]<span class="op">.</span><span class="at">value</span> <span class="op">+=</span> value<span class="op">;</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">info</span>(<span class="vs">`[METRIC] Counter </span><span class="sc">${</span>name<span class="sc">}</span><span class="vs"> = </span><span class="sc">${</span><span class="kw">this</span><span class="op">.</span><span class="at">counters</span>[key]<span class="op">.</span><span class="at">value</span><span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">setGauge</span>(name<span class="op">,</span> value<span class="op">,</span> labels <span class="op">=</span> {}) {</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> key <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="fu">generateKey</span>(name<span class="op">,</span> labels)<span class="op">;</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">gauges</span>[key] <span class="op">=</span> { name<span class="op">,</span> labels<span class="op">,</span> value }<span class="op">;</span></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">info</span>(<span class="vs">`[METRIC] Gauge </span><span class="sc">${</span>name<span class="sc">}</span><span class="vs"> = </span><span class="sc">${</span>value<span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> metrics <span class="op">=</span> <span class="kw">new</span> <span class="fu">MetricsCollector</span>()<span class="op">;</span></span></code></pre></div>
+<h4 id="types-de-métriques-collectées">Types de Métriques
+Collectées</h4>
+<p><strong>Gauges (valeurs instantanées)</strong> :</p>
+<ul>
+<li><code>todos_total</code> : Nombre total de tâches</li>
+<li><code>todos_completed</code> : Nombre de tâches complétées</li>
+<li><code>todos_pending</code> : Nombre de tâches en cours</li>
+</ul>
+<p><strong>Counters (incrémentation)</strong> :</p>
+<ul>
+<li><code>todos_added</code> : Nombre de tâches ajoutées (depuis le
+début)</li>
+<li><code>todos_deleted</code> : Nombre de tâches supprimées</li>
+<li><code>todos_completed_action</code> : Nombre de complétions</li>
+<li><code>todos_uncompleted_action</code> : Nombre de
+dé-complétions</li>
+</ul>
+<h4 id="exemple-dutilisation">Exemple d’Utilisation</h4>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Mise à jour automatique des gauges</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">useEffect</span>(() <span class="kw">=&gt;</span> {</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  metrics<span class="op">.</span><span class="fu">setGauge</span>(<span class="st">&quot;todos_total&quot;</span><span class="op">,</span> todos<span class="op">.</span><span class="at">length</span>)<span class="op">;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  metrics<span class="op">.</span><span class="fu">setGauge</span>(<span class="st">&quot;todos_completed&quot;</span><span class="op">,</span> todos<span class="op">.</span><span class="fu">filter</span>((t) <span class="kw">=&gt;</span> t<span class="op">.</span><span class="at">completed</span>)<span class="op">.</span><span class="at">length</span>)<span class="op">;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  metrics<span class="op">.</span><span class="fu">setGauge</span>(<span class="st">&quot;todos_pending&quot;</span><span class="op">,</span> todos<span class="op">.</span><span class="fu">filter</span>((t) <span class="kw">=&gt;</span> <span class="op">!</span>t<span class="op">.</span><span class="at">completed</span>)<span class="op">.</span><span class="at">length</span>)<span class="op">;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">,</span> [todos])<span class="op">;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="co">// Incrémentation d&#39;un compteur</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> addTodo <span class="op">=</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... logique d&#39;ajout</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  metrics<span class="op">.</span><span class="fu">incrementCounter</span>(<span class="st">&quot;todos_added&quot;</span>)<span class="op">;</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h4 id="visualisation-console">Visualisation Console</h4>
+<pre><code>[METRIC] Gauge todos_total = 3
+[METRIC] Gauge todos_completed = 1
+[METRIC] Gauge todos_pending = 2
+[METRIC] Counter todos_added incremented to 5</code></pre>
+<h3 id="tracing-distribué-opentelemetry">3. Tracing Distribué
+(OpenTelemetry)</h3>
+<h4 id="implémentation-tracing.js">Implémentation (tracing.js)</h4>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { trace } <span class="im">from</span> <span class="st">&quot;@opentelemetry/api&quot;</span><span class="op">;</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { WebTracerProvider } <span class="im">from</span> <span class="st">&quot;@opentelemetry/sdk-trace-web&quot;</span><span class="op">;</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> {</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  SimpleSpanProcessor<span class="op">,</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  ConsoleSpanExporter<span class="op">,</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>} <span class="im">from</span> <span class="st">&quot;@opentelemetry/sdk-trace-web&quot;</span><span class="op">;</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">function</span> <span class="fu">initializeTracing</span>() {</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> provider <span class="op">=</span> <span class="kw">new</span> <span class="fu">WebTracerProvider</span>()<span class="op">;</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Configuration de l&#39;exporteur (console pour dev, OTLP pour prod)</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>  provider<span class="op">.</span><span class="fu">addSpanProcessor</span>(<span class="kw">new</span> <span class="fu">SimpleSpanProcessor</span>(<span class="kw">new</span> <span class="fu">ConsoleSpanExporter</span>()))<span class="op">;</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>  provider<span class="op">.</span><span class="fu">register</span>({</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">contextManager</span><span class="op">:</span> <span class="kw">new</span> <span class="fu">ZoneContextManager</span>()<span class="op">,</span></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> trace<span class="op">.</span><span class="fu">getTracer</span>(<span class="st">&quot;todo-app&quot;</span><span class="op">,</span> <span class="st">&quot;1.0.0&quot;</span>)<span class="op">;</span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">function</span> <span class="fu">createSpan</span>(name<span class="op">,</span> attributes <span class="op">=</span> {}<span class="op">,</span> fn) {</span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> tracer <span class="op">=</span> <span class="fu">getTracer</span>()<span class="op">;</span></span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> span <span class="op">=</span> tracer<span class="op">.</span><span class="fu">startSpan</span>(name<span class="op">,</span> { attributes })<span class="op">;</span></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>  <span class="cf">try</span> {</span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> result <span class="op">=</span> <span class="fu">fn</span>(span)<span class="op">;</span></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a>    span<span class="op">.</span><span class="fu">end</span>()<span class="op">;</span></span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> result<span class="op">;</span></span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">catch</span> (error) {</span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>    span<span class="op">.</span><span class="fu">recordException</span>(error)<span class="op">;</span></span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>    span<span class="op">.</span><span class="fu">end</span>()<span class="op">;</span></span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> error<span class="op">;</span></span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="caractéristiques-1">Caractéristiques</h4>
+<ul>
+<li><strong>Provider Web</strong> : Adapté pour applications
+frontend</li>
+<li><strong>Context Manager</strong> : Gestion du contexte via
+Zone.js</li>
+<li><strong>Span Processor</strong> : Traitement et export des
+spans</li>
+<li><strong>Exporteur Console</strong> : Pour le développement
+(remplaçable par OTLP)</li>
+</ul>
+<h4 id="utilisation-dans-lapplication-1">Utilisation dans
+l’Application</h4>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> addTodo <span class="op">=</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">createSpan</span>(<span class="st">&quot;add_todo&quot;</span><span class="op">,</span> { <span class="dt">todoText</span><span class="op">:</span> inputValue }<span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Logique d&#39;ajout de todo</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Le span capture automatiquement le temps d&#39;exécution</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> toggleTodo <span class="op">=</span> (id) <span class="kw">=&gt;</span> {</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">createSpan</span>(<span class="st">&quot;toggle_todo&quot;</span><span class="op">,</span> { <span class="dt">todoId</span><span class="op">:</span> id }<span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Logique de basculement</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h4 id="format-de-trace">Format de Trace</h4>
+<div class="sourceCode" id="cb17"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">traceId</span><span class="op">:</span> <span class="st">&#39;a1b2c3d4e5f6...&#39;</span><span class="op">,</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">spanId</span><span class="op">:</span> <span class="st">&#39;x1y2z3...&#39;</span><span class="op">,</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;add_todo&#39;</span><span class="op">,</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">kind</span><span class="op">:</span> <span class="st">&#39;INTERNAL&#39;</span><span class="op">,</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">timestamp</span><span class="op">:</span> <span class="dv">1729349271234000</span><span class="op">,</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">duration</span><span class="op">:</span> <span class="dv">1234</span><span class="op">,</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">attributes</span><span class="op">:</span> {</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">todoText</span><span class="op">:</span> <span class="st">&#39;Acheter du pain&#39;</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">status</span><span class="op">:</span> { <span class="dt">code</span><span class="op">:</span> <span class="st">&#39;OK&#39;</span> }</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="métriques-de-performance-web-vitals">4. Métriques de Performance
+(Web Vitals)</h3>
+<h4 id="implémentation-performance.js">Implémentation
+(performance.js)</h4>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { onCLS<span class="op">,</span> onINP<span class="op">,</span> onLCP<span class="op">,</span> onFCP<span class="op">,</span> onTTFB } <span class="im">from</span> <span class="st">&quot;web-vitals&quot;</span><span class="op">;</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">function</span> <span class="fu">initPerformanceMonitoring</span>() {</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Cumulative Layout Shift</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">onCLS</span>((metric) <span class="kw">=&gt;</span> {</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">info</span>(<span class="st">&quot;[WEB VITAL] CLS:&quot;</span><span class="op">,</span> metric)<span class="op">;</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Interaction to Next Paint</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">onINP</span>((metric) <span class="kw">=&gt;</span> {</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">info</span>(<span class="st">&quot;[WEB VITAL] INP:&quot;</span><span class="op">,</span> metric)<span class="op">;</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Largest Contentful Paint</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">onLCP</span>((metric) <span class="kw">=&gt;</span> {</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">info</span>(<span class="st">&quot;[WEB VITAL] LCP:&quot;</span><span class="op">,</span> metric)<span class="op">;</span></span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>  <span class="co">// First Contentful Paint</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">onFCP</span>((metric) <span class="kw">=&gt;</span> {</span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">info</span>(<span class="st">&quot;[WEB VITAL] FCP:&quot;</span><span class="op">,</span> metric)<span class="op">;</span></span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Time to First Byte</span></span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">onTTFB</span>((metric) <span class="kw">=&gt;</span> {</span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">info</span>(<span class="st">&quot;[WEB VITAL] TTFB:&quot;</span><span class="op">,</span> metric)<span class="op">;</span></span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="métriques-collectées">Métriques Collectées</h4>
+<table>
+<thead>
+<tr>
+<th>Métrique</th>
+<th>Description</th>
+<th>Seuil Bon</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CLS</strong></td>
+<td>Stabilité visuelle (décalages)</td>
+<td>&lt; 0.1</td>
+</tr>
+<tr>
+<td><strong>INP</strong></td>
+<td>Réactivité aux interactions</td>
+<td>&lt; 200ms</td>
+</tr>
+<tr>
+<td><strong>LCP</strong></td>
+<td>Temps de chargement du plus grand élément</td>
+<td>&lt; 2.5s</td>
+</tr>
+<tr>
+<td><strong>FCP</strong></td>
+<td>Temps du premier rendu</td>
+<td>&lt; 1.8s</td>
+</tr>
+<tr>
+<td><strong>TTFB</strong></td>
+<td>Temps de réponse du serveur</td>
+<td>&lt; 0.8s</td>
+</tr>
+</tbody>
+</table>
+<h4 id="exemple-de-sortie">Exemple de Sortie</h4>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>[WEB VITAL] FCP<span class="op">:</span> {</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;FCP&#39;</span><span class="op">,</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">value</span><span class="op">:</span> <span class="fl">234.5</span><span class="op">,</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">rating</span><span class="op">:</span> <span class="st">&#39;good&#39;</span><span class="op">,</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">delta</span><span class="op">:</span> <span class="fl">234.5</span><span class="op">,</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entries</span><span class="op">:</span> [<span class="op">...</span>]</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>[WEB VITAL] LCP<span class="op">:</span> {</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;LCP&#39;</span><span class="op">,</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">value</span><span class="op">:</span> <span class="fl">1245.2</span><span class="op">,</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">rating</span><span class="op">:</span> <span class="st">&#39;good&#39;</span><span class="op">,</span></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">delta</span><span class="op">:</span> <span class="fl">1245.2</span><span class="op">,</span></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entries</span><span class="op">:</span> [<span class="op">...</span>]</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="initialisation-globale">Initialisation Globale</h3>
+<div class="sourceCode" id="cb20"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">// App.jsx</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="fu">useEffect</span>(() <span class="kw">=&gt;</span> {</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  logger<span class="op">.</span><span class="fu">info</span>(<span class="st">&quot;Application starting...&quot;</span>)<span class="op">;</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">try</span> {</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">initializeTracing</span>()<span class="op">;</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">initPerformanceMonitoring</span>()<span class="op">;</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    logger<span class="op">.</span><span class="fu">info</span>(<span class="st">&quot;Observability initialized successfully&quot;</span>)<span class="op">;</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">catch</span> (error) {</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    logger<span class="op">.</span><span class="fu">error</span>(<span class="st">&quot;Failed to initialize observability&quot;</span><span class="op">,</span> {</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">error</span><span class="op">:</span> error<span class="op">.</span><span class="at">message</span><span class="op">,</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>}<span class="op">,</span> [])<span class="op">;</span></span></code></pre></div>
+<h3 id="avantages-de-cette-architecture">Avantages de Cette
+Architecture</h3>
+<ol type="1">
+<li><strong>Modularité</strong> : Chaque aspect d’observabilité est
+indépendant</li>
+<li><strong>Extensibilité</strong> : Facile d’ajouter de nouveaux
+exporteurs (Prometheus, Jaeger, etc.)</li>
+<li><strong>Performance</strong> : Impact minimal sur l’application</li>
+<li><strong>Debugging</strong> : Facilite le diagnostic des
+problèmes</li>
+<li><strong>Production-ready</strong> : Peut être connecté à des
+backends d’observabilité (Grafana, Datadog, etc.)</li>
+</ol>
+<hr />
+<h2 id="exécution-locale-et-déploiement">Exécution Locale et
+Déploiement</h2>
+<h3 id="docker-compose-local">Docker Compose (local)</h3>
+<ul>
+<li>Démarrage: <code>docker compose up -d</code></li>
+<li>Accès:
+<ul>
+<li>Grafana http://localhost:3000 (admin/admin)</li>
+<li>Prometheus http://localhost:9090</li>
+<li>OpenTelemetry Collector http://localhost:8888/metrics</li>
+<li>Backend API http://localhost:3001</li>
+<li>Frontend http://localhost:5173</li>
+<li>Promtail collecte automatiquement les logs des conteneurs
+Docker</li>
+</ul></li>
+</ul>
+<h3 id="kubernetes-minikube">Kubernetes (Minikube)</h3>
+<ul>
+<li><code>./scripts/setup-observability.sh</code> puis
+<code>./scripts/deploy-application.sh</code></li>
+</ul>
+<hr />
+<h2 id="démonstration-et-résultats">Démonstration et Résultats</h2>
+<h3 id="tests-réussis">Tests Réussis</h3>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> npm test</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a> <span class="ex">✓</span> src/observability/logger.test.js <span class="er">(</span><span class="ex">6</span> tests<span class="kw">)</span> <span class="ex">3ms</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should create a logger with correct context</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should log debug messages</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should log info messages</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should log warn messages</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should log error messages</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should include timestamp in logs</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a> <span class="ex">✓</span> src/components/TodoList.test.jsx <span class="er">(</span><span class="ex">9</span> tests<span class="kw">)</span> <span class="ex">269ms</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should render the todo list component</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should display empty state when no todos exist</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should add a new todo when clicking add button</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should add a new todo when pressing Enter key</span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should not add empty todos</span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should toggle todo completion status</span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should delete a todo</span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should display correct statistics</span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>   <span class="ex">✓</span> should handle multiple todos correctly</span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a> <span class="ex">Test</span> Files  2 passed <span class="er">(</span><span class="ex">2</span><span class="kw">)</span></span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>      <span class="ex">Tests</span>  15 passed <span class="er">(</span><span class="ex">15</span><span class="kw">)</span></span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>   <span class="ex">Duration</span>  712ms</span></code></pre></div>
+<h3 id="build-optimisé">Build Optimisé</h3>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> npm run build</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="ex">✓</span> 172 modules transformed.</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="ex">dist/index.html</span>                   0.49 kB │ gzip:  0.30 kB</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="ex">dist/assets/index-*.css</span>           2.24 kB │ gzip:  0.94 kB</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="ex">dist/assets/index-*.js</span>          284.11 kB │ gzip: 90.23 kB</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a><span class="ex">✓</span> built in 504ms</span></code></pre></div>
+<h3 id="traces-dobservabilité-exemple-dexécution">Traces d’Observabilité
+(Exemple d’Exécution)</h3>
+<ul>
+<li>Etape 1: Ouverture de l’application et l’ajout d’un todo
+<strong>Clean House</strong></li>
+<li>Etape 2: Marquer ce TODO comme complet</li>
+</ul>
+<p><image placeholder></p>
+<p>Ouverture de Grafana -&gt; Explore -&gt; Tempo:</p>
+<p><image placeholder></p>
+<p>Le trace de l’operation PUT relative a ce TODO est marqué dans le
+dashboard de Tempo</p>
+<h3 id="dashboard-prometheus-dans-grafana">Dashboard Prometheus dans
+Grafana</h3>
+<p>Voici le dashboard Prometheus qui mesure le metric suivant:
+<strong>Active Todos</strong> <image placeholder></p>
+<h3 id="requêtes-de-logs-dans-grafana">Requêtes de Logs dans
+Grafana</h3>
+<p>Avec Promtail configuré, les logs sont automatiquement collectés et
+disponibles dans Grafana :</p>
+<ol type="1">
+<li><strong>Accès</strong> : Grafana → Explore → Loki</li>
+<li><strong>Requêtes utiles</strong> :
+<ul>
+<li><code>{container="backend"}</code> : Logs du backend uniquement</li>
+<li><code>{job="docker"} |= "todo"</code> : Logs contenant “todo”</li>
+<li><code>{container="backend"} | json</code> : Logs structurés
+JSON</li>
+</ul></li>
+</ol>
+<p><image placeholder></p>
+<hr />
+<h2 id="conclusion">Conclusion</h2>
+<h3 id="objectifs-atteints">Objectifs Atteints</h3>
+<p>✅ <strong>Pipeline CI/CD</strong> :</p>
+<ul>
+<li>Tests automatisés</li>
+<li>Build optimisé</li>
+<li>Déploiement continu sur GitHub Pages</li>
+</ul>
+<p>✅ <strong>Observabilité complète</strong> :</p>
+<ul>
+<li><strong>Logs structurés</strong> : Format JSON avec contexte et
+métadonnées, collectés par Promtail</li>
+<li><strong>Métriques</strong> : Gauges et counters pour suivre l’usage
+via Prometheus</li>
+<li><strong>Traces</strong> : OpenTelemetry pour le suivi distribué via
+Tempo</li>
+<li><strong>Performance</strong> : Web Vitals pour les métriques UX</li>
+<li><strong>Visualisation</strong> : Interface unifiée Grafana pour
+logs, métriques et traces</li>
+</ul>

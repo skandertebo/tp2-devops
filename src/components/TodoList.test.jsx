@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TodoList from './TodoList';
+import * as api from '../lib/api';
 
 // Mock the observability modules
 vi.mock('../observability/logger', () => ({
@@ -27,9 +28,27 @@ vi.mock('../observability/tracing', () => ({
   getTracer: vi.fn()
 }));
 
+// Mock the API functions
+vi.mock('../lib/api', () => ({
+  getTodos: vi.fn(),
+  createTodo: vi.fn(),
+  updateTodo: vi.fn(),
+  deleteTodoApi: vi.fn()
+}));
+
 describe('TodoList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    
+    // Set up default mock implementations
+    api.getTodos.mockResolvedValue([]);
+    api.createTodo.mockImplementation((text) => 
+      Promise.resolve({ id: Date.now(), text, completed: false })
+    );
+    api.updateTodo.mockImplementation((id, payload) => 
+      Promise.resolve({ id, text: 'Test Todo', completed: payload.completed })
+    );
+    api.deleteTodoApi.mockResolvedValue();
   });
 
   it('should render the todo list component', () => {
@@ -54,7 +73,9 @@ describe('TodoList', () => {
     await user.type(input, 'Test Todo');
     await user.click(addButton);
 
-    expect(screen.getByText('Test Todo')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Test Todo')).toBeInTheDocument();
+    });
     expect(input.value).toBe('');
   });
 
