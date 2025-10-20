@@ -27,13 +27,10 @@ Ce projet a pour but de démontrer l'intégration complète d'un pipeline CI/CD 
 ### Technologies Choisies
 
 - **Frontend** : React.js 19 avec Vite
+- **Backend** : Node.js/Express (instrumenté OpenTelemetry)
 - **Testing** : Vitest + React Testing Library
-- **CI/CD** : GitHub Actions
-- **Observabilité** :
-  - OpenTelemetry (tracing)
-  - Web Vitals (métriques de performance)
-  - Logger personnalisé (logs structurés)
-  - Système de métriques custom (métriques métier)
+- **CI/CD** : GitHub Actions (Docker + Kubernetes)
+- **Observabilité** : OpenTelemetry Collector, **Tempo** (traces), **Loki** (logs), **Prometheus** (métriques), **Grafana** (visualisation)
 
 ---
 
@@ -51,14 +48,16 @@ tp2devops/
 │   │   ├── TodoList.jsx
 │   │   ├── TodoList.css
 │   │   └── TodoList.test.jsx
-│   ├── observability/       # Outils d'observabilité
+│   ├── observability/       # Outils FE (logs, tracing FE vers OTLP)
 │   │   ├── logger.js
 │   │   ├── logger.test.js
 │   │   ├── metrics.js
-│   │   ├── tracing.js
-│   │   └── performance.js
+│   │   └── tracing.js
 │   └── test/                # Configuration tests
-├── dist/                    # Build de production
+├── backend/                 # API Express + OTel + Prometheus + Pino
+├── k8s/                     # Manifests Kubernetes (Prom, Loki, Tempo, OTel, Grafana, app)
+├── config/                  # Config docker-compose (Prom, Tempo, Collector, Grafana)
+├── docker-compose.yml       # Stack locale complète
 ├── package.json
 └── vite.config.js
 ```
@@ -160,25 +159,13 @@ function TodoList() {
     metrics.setGauge("todos_pending", todos.filter((t) => !t.completed).length);
   }, [todos]);
 
-  const addTodo = () => {
-    createSpan("add_todo", { todoText: inputValue }, () => {
-      if (inputValue.trim() === "") {
-        logger.warn("Attempted to add empty todo");
-        return;
-      }
-
-      const newTodo = {
-        id: Date.now(),
-        text: inputValue,
-        completed: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      setTodos([...todos, newTodo]);
+  // Désormais, les todos passent par l'API backend
+  const addTodo = async () => {
+    await createSpan("add_todo", { todoText: inputValue }, async () => {
+      if (inputValue.trim() === "") return;
+      const created = await createTodo(inputValue.trim());
+      setTodos([...todos, created]);
       setInputValue("");
-
-      logger.info("Todo added", { todoId: newTodo.id });
-      metrics.incrementCounter("todos_added");
     });
   };
 
@@ -301,65 +288,10 @@ Notre pipeline CI/CD est composé de **3 jobs principaux** :
 └─────────────┘
 ```
 
-### Configuration GitHub Actions (.github/workflows/ci.yml)
+### Configuration GitHub Actions
 
 ```yaml
-name: CI/CD Pipeline
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-
-jobs:
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run linter
-        run: npm run lint
-        continue-on-error: true
-
-      - name: Run tests
-        run: npm test -- --run
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: test
-
-    steps:
-      - name: Build application
-        run: npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: build
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+ci-k8s.yml (actif): build & push d'images Docker (frontend/backend) et étapes de déploiement Kubernetes (commentées).
 ```
 
 ### Étapes Détaillées
@@ -781,68 +713,16 @@ useEffect(() => {
 
 ---
 
-## Déploiement
+## Exécution Locale et Déploiement
 
-### Configuration GitHub Pages
+### Docker Compose (local)
 
-#### 1. Configuration Vite
+- Démarrage: `docker compose up -d`
+- Accès: Grafana http://localhost:3000, Prometheus http://localhost:9090, Collector http://localhost:8888/metrics, Backend http://localhost:3001, Frontend http://localhost:5173
 
-```javascript
-// vite.config.js
-export default defineConfig({
-  base: "/tp2devops/", // Nom du repository
-  // ...
-});
-```
+### Kubernetes (Minikube)
 
-**Raison** : GitHub Pages sert les projets depuis `username.github.io/repo-name/`.
-
-#### 2. Activation GitHub Pages
-
-Dans les paramètres du repository :
-
-1. Aller dans **Settings** → **Pages**
-2. Source : **GitHub Actions**
-3. Le déploiement se fait automatiquement via le workflow
-
-#### 3. URL de Déploiement
-
-Format : `https://[username].github.io/tp2devops/`
-
-### Process de Déploiement
-
-```
-┌─────────────────────┐
-│  Push sur main      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Tests passent      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Build réussi       │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Upload vers Pages  │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  Site en ligne! ✓   │
-└─────────────────────┘
-```
-
-### Temps de Déploiement
-
-- **Tests** : ~1-2 minutes
-- **Build** : ~1 minute
-- **Deploy** : ~30 secondes
-- **Total** : ~3-4 minutes
+- `./scripts/setup-observability.sh` puis `./scripts/deploy-application.sh`
 
 ---
 
