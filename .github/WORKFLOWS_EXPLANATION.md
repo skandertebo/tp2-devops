@@ -1,35 +1,10 @@
 # GitHub Actions Workflows - Explication
 
-## Deux Workflows Différents
+## Workflow Actif
 
-Ce projet contient **deux workflows CI/CD** avec des objectifs différents :
+Ce projet utilise **un workflow CI/CD** principal pour la solution complète avec observabilité :
 
-### 1. `ci.yml` - GitHub Pages (Demo Simple)
-
-**Objectif** : Déploiement du frontend React comme site statique
-
-**Pipeline** :
-```
-Test Frontend → Build Frontend → Deploy sur GitHub Pages
-```
-
-**Quand il se déclenche** :
-- Push sur `main` avec modifications dans `src/`, `public/`, ou `package.json`
-- Pull requests vers `main`
-
-**Résultat** :
-- Site accessible sur : `https://username.github.io/tp2devops/`
-- Frontend uniquement (pas de backend)
-- Pas d'observabilité
-
-**Utilisation** :
-- ✅ Démo rapide de l'application frontend
-- ✅ Test du pipeline CI/CD de base
-- ✅ Hébergement gratuit sur GitHub Pages
-
----
-
-### 2. `ci-k8s.yml` - Kubernetes (Solution Complète)
+### `ci-k8s.yml` - Kubernetes (Solution Complète avec Observabilité)
 
 **Objectif** : Déploiement full-stack avec observabilité sur Kubernetes
 
@@ -58,61 +33,37 @@ Deploy sur Kubernetes (avec Prometheus, Loki, Tempo, Grafana)
 
 ---
 
-## Quelle Workflow Utiliser ?
+## Focus sur la Solution Complète
 
-### Pour votre Présentation TP2 DevOps
-
-**Recommandation** : Montrez les **deux approches** !
-
-#### Partie 1 : CI/CD Basique (ci.yml)
-- Montrer le pipeline simple GitHub Pages
-- Expliquer les étapes : test → build → deploy
-- Montrer le site déployé
-
-#### Partie 2 : CI/CD + Observabilité (ci-k8s.yml)
-- Montrer le pipeline avancé avec Docker
-- Expliquer l'orchestration Kubernetes
-- Montrer le stack d'observabilité (Grafana, Prometheus, etc.)
+Ce projet se concentre sur une **solution production-ready** avec :
+- 🐳 Docker pour la containerisation
+- ☸️ Kubernetes pour l'orchestration
+- 📊 Stack d'observabilité complète (Prometheus, Loki, Tempo)
+- 🔄 Pipeline CI/CD avancé
 
 ---
 
-## Configuration des Workflows
+## Workflow Désactivé
 
-### Désactiver un Workflow
+### `ci.yml.disabled` - GitHub Pages (Désactivé)
 
-Si vous voulez désactiver temporairement un workflow :
+Le workflow de déploiement GitHub Pages a été désactivé car le projet utilise maintenant une architecture full-stack avec backend et observabilité, qui nécessite Kubernetes.
 
-**Option 1** : Renommer le fichier
+**Pour le réactiver** (si besoin) :
 ```bash
-mv .github/workflows/ci.yml .github/workflows/ci.yml.disabled
+mv .github/workflows/ci.yml.disabled .github/workflows/ci.yml
 ```
-
-**Option 2** : Ajouter une condition qui ne sera jamais vraie
-```yaml
-on:
-  push:
-    branches: [never-trigger]
-```
-
-### Éviter les Doublons
-
-Les workflows sont configurés pour se déclencher sur des **paths différents** :
-
-- `ci.yml` : Changements frontend uniquement
-- `ci-k8s.yml` : Changements backend/infra uniquement
-
-Donc ils ne devraient **pas se déclencher en même temps** !
 
 ---
 
 ## Résumé
 
-| Workflow | Type | Déploiement | Observabilité | Quand l'utiliser |
-|----------|------|-------------|---------------|------------------|
-| `ci.yml` | Simple | GitHub Pages | ❌ Non | Démo rapide, test CI/CD basique |
-| `ci-k8s.yml` | Avancé | Kubernetes | ✅ Complète | Démo production-ready, showcase DevOps |
+| Fichier | Statut | Description |
+|---------|--------|-------------|
+| `ci-k8s.yml` | ✅ Actif | Pipeline complet : Docker → Kubernetes → Observabilité |
+| `ci.yml.disabled` | ❌ Désactivé | Simple déploiement GitHub Pages (non utilisé) |
 
-**Conclusion** : **Gardez les deux !** Ils montrent votre maîtrise de différentes approches de déploiement.
+**Architecture actuelle** : Full-stack avec observabilité production-ready sur Kubernetes.
 
 ---
 
