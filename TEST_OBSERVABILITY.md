@@ -24,7 +24,7 @@ docker-compose ps
 
 # Devrait afficher :
 # otel-collector   - running
-# tempo            - running  
+# tempo            - running
 # loki             - running
 # prometheus       - running
 # grafana          - running
@@ -34,14 +34,14 @@ docker-compose ps
 
 ### Étape 3 : Accéder aux Services
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| **Frontend** | http://localhost:5173 | - |
-| **Backend API** | http://localhost:3001 | - |
-| **Grafana** 📊 | http://localhost:3000 | admin/admin |
-| **Prometheus** | http://localhost:9090 | - |
-| **Loki** | http://localhost:3100 | - |
-| **Tempo** | http://localhost:3200 | - |
+| Service         | URL                   | Credentials |
+| --------------- | --------------------- | ----------- |
+| **Frontend**    | http://localhost:5173 | -           |
+| **Backend API** | http://localhost:3001 | -           |
+| **Grafana** 📊  | http://localhost:3000 | admin/admin |
+| **Prometheus**  | http://localhost:9090 | -           |
+| **Loki**        | http://localhost:3100 | -           |
+| **Tempo**       | http://localhost:3200 | -           |
 
 ### Étape 4 : Générer du Trafic
 
@@ -75,6 +75,7 @@ curl -X DELETE http://localhost:3001/api/todos/2
 ## 📊 Test 1 : Vérifier les Métriques (Prometheus)
 
 ### 1. Ouvrir Prometheus
+
 ```bash
 open http://localhost:9090
 ```
@@ -88,7 +89,7 @@ Dans l'interface Prometheus, exécutez ces requêtes :
 rate(tp2devops_http_requests_total[1m])
 
 # Latence P95 des requêtes
-histogram_quantile(0.95, 
+histogram_quantile(0.95,
   rate(tp2devops_http_request_duration_seconds_bucket[5m])
 )
 
@@ -109,6 +110,7 @@ open http://localhost:9090/targets
 ```
 
 Devrait afficher :
+
 - ✅ `backend` - UP
 - ✅ `otel-collector` - UP
 - ✅ `prometheus` - UP
@@ -118,6 +120,7 @@ Devrait afficher :
 ## 📝 Test 2 : Vérifier les Logs (Loki via Grafana)
 
 ### 1. Ouvrir Grafana
+
 ```bash
 open http://localhost:3000
 ```
@@ -125,6 +128,7 @@ open http://localhost:3000
 **Login** : admin/admin
 
 ### 2. Aller dans Explore
+
 - Cliquer sur l'icône **boussole** (Explore)
 - Sélectionner datasource **Loki**
 
@@ -150,6 +154,7 @@ open http://localhost:3000
 ### 4. Vérifier la Structure des Logs
 
 Les logs devraient être en format JSON :
+
 ```json
 {
   "level": "INFO",
@@ -166,16 +171,19 @@ Les logs devraient être en format JSON :
 ## 🔍 Test 3 : Vérifier les Traces (Tempo)
 
 ### 1. Dans Grafana Explore
+
 - Sélectionner datasource **Tempo**
 
 ### 2. Rechercher des Traces
 
 **Option A : Search**
+
 - Service Name : `tp2devops-backend`
 - Operation : Laisser vide ou choisir `create_todo`, `update_todo`, etc.
 - Cliquer sur **Run Query**
 
 **Option B : TraceQL**
+
 ```traceql
 # Toutes les traces
 { resource.service.name = "tp2devops-backend" }
@@ -190,6 +198,7 @@ Les logs devraient être en format JSON :
 ### 3. Analyser une Trace
 
 Cliquer sur une trace pour voir :
+
 - 🔥 **Flame Graph** : Visualisation hiérarchique des spans
 - 📊 **Span List** : Liste détaillée avec durées
 - 📝 **Attributes** : Métadonnées (todoId, status_code, etc.)
@@ -210,11 +219,13 @@ Cliquer sur une trace pour voir :
 ### Workflow : Metrics → Logs → Traces
 
 1. **Prometheus** : Observer une latence élevée
+
    ```promql
    histogram_quantile(0.95, rate(tp2devops_http_request_duration_seconds_bucket[5m]))
    ```
 
 2. **Loki** : Chercher les logs avec haute latence
+
    ```logql
    {container="backend"} | json | duration > 50
    ```
@@ -222,6 +233,7 @@ Cliquer sur une trace pour voir :
 3. **Copier un `traceId`** depuis les logs
 
 4. **Tempo** : Chercher la trace
+
    - Explore → Tempo → Trace ID → Coller le traceId
 
 5. **Analyser** le flame graph pour voir quel span est lent
@@ -260,6 +272,7 @@ curl http://localhost:8888/metrics
 1. Grafana → **Dashboards** → **New** → **Import**
 
 2. Uploader le fichier :
+
    ```bash
    k8s/grafana-dashboards/application-dashboard.json
    ```
@@ -267,21 +280,25 @@ curl http://localhost:8888/metrics
 3. Ou créer un nouveau dashboard avec ces panels :
 
 **Panel 1 : HTTP Request Rate**
+
 ```promql
 rate(tp2devops_http_requests_total[5m])
 ```
 
 **Panel 2 : HTTP Request Duration (P95)**
+
 ```promql
 histogram_quantile(0.95, rate(tp2devops_http_request_duration_seconds_bucket[5m]))
 ```
 
 **Panel 3 : Active Todos (Stat)**
+
 ```promql
 tp2devops_todos_active
 ```
 
 **Panel 4 : Recent Logs (Logs panel)**
+
 ```logql
 {container="backend"} | json
 ```
@@ -341,33 +358,39 @@ curl http://localhost:3200/ready
 ## 🎯 Checklist de Validation Complète
 
 ### ✅ Services Démarrés
+
 - [ ] `docker-compose ps` affiche tous les services "Up"
 - [ ] Pas d'erreurs dans `docker-compose logs`
 
 ### ✅ Backend Fonctionnel
+
 - [ ] Health check : `curl http://localhost:3001/health`
 - [ ] Création de todo fonctionne
 - [ ] Endpoint metrics accessible : `curl http://localhost:3001/metrics`
 
 ### ✅ Prometheus
+
 - [ ] UI accessible : http://localhost:9090
 - [ ] Targets en UP : http://localhost:9090/targets
 - [ ] Métriques `tp2devops_*` visibles
 - [ ] Requêtes PromQL fonctionnent
 
 ### ✅ Loki
+
 - [ ] API répond : `curl http://localhost:3100/ready`
 - [ ] Logs visibles dans Grafana Explore
 - [ ] Logs sont en JSON
 - [ ] LogQL queries fonctionnent
 
 ### ✅ Tempo
+
 - [ ] API répond : `curl http://localhost:3200/ready`
 - [ ] Traces visibles dans Grafana Explore
 - [ ] Flame graphs s'affichent
 - [ ] TraceQL queries fonctionnent
 
 ### ✅ Grafana
+
 - [ ] UI accessible : http://localhost:3000
 - [ ] Login fonctionne (admin/admin)
 - [ ] 3 datasources configurées et fonctionnelles
@@ -375,6 +398,7 @@ curl http://localhost:3200/ready
 - [ ] Correlation Traces → Logs fonctionne
 
 ### ✅ OpenTelemetry Collector
+
 - [ ] Logs montrent export réussi
 - [ ] Métriques du collector accessibles : http://localhost:8888/metrics
 - [ ] Pas d'erreurs dans les logs
@@ -521,6 +545,7 @@ hey -n 1000 -c 10 -m POST \
 ### Scénario 3 : Suivre une Requête de Bout en Bout
 
 1. **Créer un todo**
+
    ```bash
    curl -X POST http://localhost:3001/api/todos \
      -H "Content-Type: application/json" \
@@ -528,13 +553,16 @@ hey -n 1000 -c 10 -m POST \
    ```
 
 2. **Voir les métriques**
+
    - Prometheus : `tp2devops_todo_operations_total{operation="create"}`
 
 3. **Trouver le log**
+
    - Loki : `{container="backend"} |= "Test correlation"`
    - Noter le `traceId`
 
 4. **Voir la trace**
+
    - Tempo : Chercher par traceId
    - Analyser le flame graph
 
@@ -558,4 +586,3 @@ Vous avez réussi si vous pouvez :
 ---
 
 **🎉 Félicitations ! Votre stack d'observabilité fonctionne ! 🎉**
-

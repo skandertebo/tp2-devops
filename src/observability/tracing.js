@@ -3,20 +3,22 @@
  * Provides distributed tracing capabilities
  */
 
-import { trace } from '@opentelemetry/api';
-import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
-import { SimpleSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-web';
-import { ZoneContextManager } from '@opentelemetry/context-zone';
+import { trace } from "@opentelemetry/api";
+import { ZoneContextManager } from "@opentelemetry/context-zone";
+import {
+  ConsoleSpanExporter,
+  SimpleSpanProcessor,
+} from "@opentelemetry/sdk-trace-base";
+import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
 
 let provider;
 let tracer;
 
 export function initializeTracing() {
-  // Create a provider
-  provider = new WebTracerProvider();
-
-  // Add a span processor with console exporter (in production, use OTLP exporter)
-  provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
+  // Create a provider with the span processor configured in the ctor
+  provider = new WebTracerProvider({
+    spanProcessors: [new SimpleSpanProcessor(new ConsoleSpanExporter())],
+  });
 
   // Register the provider
   provider.register({
@@ -24,9 +26,9 @@ export function initializeTracing() {
   });
 
   // Get a tracer
-  tracer = trace.getTracer('todo-app', '1.0.0');
-  
-  console.info('[TRACING] OpenTelemetry tracing initialized');
+  tracer = trace.getTracer("todo-app", "1.0.0");
+
+  console.info("[TRACING] OpenTelemetry tracing initialized");
 }
 
 export function getTracer() {
@@ -39,7 +41,7 @@ export function getTracer() {
 export function createSpan(name, attributes = {}, fn) {
   const tracer = getTracer();
   const span = tracer.startSpan(name, { attributes });
-  
+
   try {
     const result = fn(span);
     span.end();
@@ -54,7 +56,7 @@ export function createSpan(name, attributes = {}, fn) {
 export async function createAsyncSpan(name, attributes = {}, fn) {
   const tracer = getTracer();
   const span = tracer.startSpan(name, { attributes });
-  
+
   try {
     const result = await fn(span);
     span.end();
@@ -65,4 +67,3 @@ export async function createAsyncSpan(name, attributes = {}, fn) {
     throw error;
   }
 }
-
