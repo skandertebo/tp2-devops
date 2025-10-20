@@ -1,8 +1,13 @@
-name: CI/CD Pipeline
+name: CI/CD - GitHub Pages (Simple Demo)
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
 

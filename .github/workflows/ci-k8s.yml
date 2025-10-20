@@ -1,8 +1,14 @@
-name: CI/CD with Docker & Kubernetes
+name: CI/CD - Kubernetes (Full Observability)
 
 on:
   push:
     branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - 'k8s/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.github/workflows/ci-k8s.yml'
   pull_request:
     branches: [main]
 
